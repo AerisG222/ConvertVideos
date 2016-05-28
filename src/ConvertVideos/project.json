@@ -1,0 +1,23 @@
+{
+    "title": "ConvertVideos",
+    "authors": [ "Mike Morano <mmorano@mikeandwan.us>" ],
+    "description": "A small utility to convert videos for my website",
+    "version": "0.1.0",
+    "packOptions": {
+        "licenseUrl": "https://github.com/AerisG222/ConvertVideos/blob/master/LICENSE.md",
+        "projectUrl": "https://github.com/AerisG222/ConvertVideos",
+        "summary": "A small utility to convert videos for my website",
+        "tags": [ "video", "movie", "convert", "ffmpeg" ]
+    },
+    "buildOptions": {
+        "debugType": "portable",
+        "emitEntryPoint": true,
+        "warningsAsErrors": true
+    },
+    "commands": {
+        "run": "ConvertVideos" 
+    },
+    "frameworks": {
+        "net451": { }
+    }
+}
