@@ -1,6 +1,8 @@
-[![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/AerisG222/ConvertVideos/blob/master/LICENSE.md)
+[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/AerisG222/ConvertVideos/blob/master/LICENSE.md)
+[![Travis](https://img.shields.io/travis/AerisG222/ConvertVideos.svg?maxAge=2592000)](https://travis-ci.org/AerisG222/ConvertVideos)
+[![Coverity Scan](https://img.shields.io/coverity/scan/10075.svg)](https://scan.coverity.com/projects/aerisg222-convertvideos)
 
-#ConvertVideos
+# ConvertVideos
 
 A small utility I use to prepare videos of different formats for my website.
 
