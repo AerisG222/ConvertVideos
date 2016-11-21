@@ -139,9 +139,7 @@ namespace ConvertVideos
 			{
 				Writer = new StreamWriter(OutputFile);
 
-				Writer.WriteLine(string.Concat("INSERT INTO video_category (name, year, is_private) VALUES (", SqlString(CategoryName), ", ", Year, ", ", IsPrivate.ToString().ToUpper(), ");"));
-				Writer.WriteLine();
-				Writer.WriteLine(@"SELECT @CATEGORY_ID := LAST_INSERT_ID();");
+				Writer.WriteLine(string.Concat("INSERT INTO video.category (name, year, is_private) VALUES (", SqlString(CategoryName), ", ", Year, ", ", IsPrivate.ToString().ToUpper(), ");"));
 				Writer.WriteLine();
 
 				Parallel.ForEach(filesToSize, ProcessMovie);
@@ -207,10 +205,10 @@ namespace ConvertVideos
 			
 			lock(_lockObj)
 			{
-				Writer.WriteLine("INSERT INTO video (video_category_id, thumb_height, thumb_width, full_height, full_width, scaled_height, scaled_width,"
+				Writer.WriteLine("INSERT INTO video.video (category_id, thumb_height, thumb_width, full_height, full_width, scaled_height, scaled_width,"
 				                                  + " raw_path, thumb_path, full_path, scaled_path, is_private, duration)"
 				                         + " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12});",
-			        "@CATEGORY_ID",
+			        "(SELECT currval('video.category_id_seq'))",
 					mm.ThumbHeight,
 					mm.ThumbWidth,
 				    mm.FullHeight,
@@ -227,7 +225,7 @@ namespace ConvertVideos
 				if(!HasSetTeaserVideo)
 				{
 					Writer.WriteLine();
-					Writer.WriteLine("UPDATE video_category SET teaser_image_path = {0}, teaser_image_height = {1}, teaser_image_width = {2} WHERE id = @CATEGORY_ID;",
+					Writer.WriteLine("UPDATE video.category SET teaser_image_path = {0}, teaser_image_height = {1}, teaser_image_width = {2} WHERE id = (SELECT currval('video.category_id_seq'));",
 					                 SqlString(mm.ThumbUrl), 
 					                 mm.ThumbHeight, 
 					                 mm.ThumbWidth);
