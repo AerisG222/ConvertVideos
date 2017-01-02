@@ -21,6 +21,8 @@ namespace ConvertVideos
 		public string ScaledUrl { get; set; }
 		public string ThumbUrl { get; set; }
 
+		public int Rotation { get; set; }
+		
 		public int FullHeight { get; set; }
 		public int FullWidth { get; set; }
 
