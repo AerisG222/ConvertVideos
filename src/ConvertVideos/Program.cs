@@ -3,129 +3,108 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Mono.Options;
 
 
 namespace ConvertVideos
 {
 	public class Program
 	{
-		private const string FFMPEG_PATH = "/usr/bin/ffmpeg";
-		private const string FFPROBE_PATH = "/usr/bin/ffprobe";
-		private const string DIR_RAW = "raw";
-		private const string DIR_FULL = "full";
-		private const string DIR_SCALED = "scaled";
-		private const string DIR_THUMBNAILS = "thumbnails";
-		private const int FULL_MIN_DIMENSION = 480;
-		private const int SCALE_MIN_DIMENSION = 240;
-		private const int THUMB_WIDTH = 240;
-		private const int THUMB_HEIGHT = 160;
-		private static readonly string[] SOURCE_EXTENSIONS = new string[] { ".flv", ".vob", ".mpg", ".mpeg", ".avi", ".3gp", ".m4v", ".mp4", ".mov" };
-		private const string DEST_EXTENSION = "mp4";
+		const string FFMPEG_PATH = "/usr/bin/ffmpeg";
+		const string FFPROBE_PATH = "/usr/bin/ffprobe";
+		const string DIR_RAW = "raw";
+		const string DIR_FULL = "full";
+		const string DIR_SCALED = "scaled";
+		const string DIR_THUMBNAILS = "thumbnails";
+		const int FULL_MIN_DIMENSION = 480;
+		const int SCALE_MIN_DIMENSION = 240;
+		const int THUMB_WIDTH = 240;
+		const int THUMB_HEIGHT = 160;
+		const string DEST_EXTENSION = "mp4";
+		static readonly string[] SOURCE_EXTENSIONS = new string[] { ".flv", ".vob", ".mpg", ".mpeg", ".avi", ".3gp", ".m4v", ".mp4", ".mov" };
 		
-		private string CategoryName { get; set; }
-		private string OutputFile { get; set; }
-		private string VideoDirectory { get; set; }
-		private string WebDirectory { get; set; }
-		private bool IsPrivate { get; set; }
-		private int Year { get; set; }
-		
-		private object _lockObj = new object();
+		Options _opts;
+		object _lockObj = new object();
 		
 		
-		private bool HasSetTeaserVideo { get; set; }
-		private StreamWriter Writer { get; set; }
+		bool HasSetTeaserVideo { get; set; }
+		StreamWriter Writer { get; set; }
 		
 		
-		private string WebVideoDirectoryRoot
+		string WebVideoDirectoryRoot
 		{
 			get
 			{
-				string[] dirComponents = Path.GetDirectoryName(VideoDirectory).Split('/');
+				string[] dirComponents = Path.GetDirectoryName(_opts.VideoDirectory).Split('/');
 				string dir = dirComponents[dirComponents.Length - 1];
 				
-				return string.Concat("/movies/", Year, "/", dir, "/");
+				return $"/movies/{_opts.Year}/{dir}/";
 			}
 		}
 		
 		
-		private string WebRawDirectory
+		string WebRawDirectory
 		{
 			get
 			{
-				return string.Concat(WebVideoDirectoryRoot, DIR_RAW, "/");
+				return $"{WebVideoDirectoryRoot}{DIR_RAW}/";
 			}
 		}
 
 
-		private string WebFullsizeDirectory
+		string WebFullsizeDirectory
 		{
 			get
 			{
-				return string.Concat(WebVideoDirectoryRoot, DIR_FULL, "/");
+				return $"{WebVideoDirectoryRoot}{DIR_FULL}/";
 			}
 		}
 
 		
-		private string WebScaledDirectory
+		string WebScaledDirectory
 		{
 			get
 			{
-				return string.Concat(WebVideoDirectoryRoot, DIR_SCALED, "/");
+				return $"{WebVideoDirectoryRoot}{DIR_SCALED}/";
 			}
 		}
 		
 		
-		private string WebThumbnailDirectory
+		string WebThumbnailDirectory
 		{
 			get
 			{
-				return string.Concat(WebVideoDirectoryRoot, DIR_THUMBNAILS, "/");
+				return $"{WebVideoDirectoryRoot}{DIR_THUMBNAILS}/";
 			}
 		}
 		
 		
+		public Program(Options opts)
+		{
+			_opts = opts;
+		}
+
+
 		public static void Main (string[] args)
 		{
-			var app = new Program();
-			
-			int year = 0;
-			
-			OptionSet options = new OptionSet();
-			options.Add("c|catname=", "The name for the category to represent the videos in the directory.", delegate (string v) { app.CategoryName = v; });
-			options.Add("h|help", "This help screen.", delegate(string v) { ShowUsage(options); Environment.Exit(0); });
-			options.Add("o|outfile=", "The path to the SQL file to generate.", delegate (string v) { app.OutputFile = v; });
-			options.Add("v|viddir=", "The directory containing the source videos to resize: (/home/mmorano/Desktop/mypix/).", delegate (string v) { app.VideoDirectory = v; });
-			options.Add("w|webdir=", "The full URL path to the image directory: (/images/2009/mypix/).", delegate (string v) { app.WebDirectory = v; });
-			options.Add("x|private=", "Mark the category as private so only the admin can view these pictures.", delegate (string v) { app.IsPrivate = string.Equals(v, "y", StringComparison.InvariantCultureIgnoreCase); });
-			options.Add("y|year=", "The year the pictures were taken.", delegate (string v) { if(int.TryParse(v, out year)) { app.Year = year; } });
-			
-			options.Parse(args);
-			
-			if(string.IsNullOrEmpty(app.OutputFile) ||
-			   string.IsNullOrEmpty(app.VideoDirectory) ||
-			   string.IsNullOrEmpty(app.WebDirectory) ||
-			   string.IsNullOrEmpty(app.CategoryName) ||
-			   app.Year == 0)
-			{
-				ShowUsage(options);
-				Environment.Exit(1);
-			}
+			var opts = new Options();
+            opts.Parse(args);
+            
+			var app = new Program(opts);
 
 			app.Execute();
 		}
 		
 		
-		private void Execute()
+		void Execute()
 		{
-			if(!Directory.Exists(VideoDirectory))
+			if(!Directory.Exists(_opts.VideoDirectory))
 			{
-				throw new DirectoryNotFoundException(string.Concat("The video directory specified, ", VideoDirectory, ", does not exist.  Please specify a directory containing images."));
+				throw new DirectoryNotFoundException($"The video directory specified, {_opts.VideoDirectory}, does not exist.  Please specify a directory containing images.");
 			}
 			
-			if(File.Exists(OutputFile))
+			if(File.Exists(_opts.OutputFile))
 			{
-				throw new IOException(string.Concat("The specified output file, ", OutputFile, ", already exists.  Please remove it before running this process."));
+				throw new IOException($"The specified output file, {_opts.OutputFile}, already exists.  Please remove it before running this process.");
 			}
 			
 			Ffmpeg.FfmpegPath = FFMPEG_PATH;
@@ -135,28 +114,20 @@ namespace ConvertVideos
 			
 			IList<string> filesToSize = GetMovieFileList();
 		
-			try
+			using(var fs = new FileStream(_opts.OutputFile, FileMode.CreateNew))
+			using(Writer = new StreamWriter(fs))
 			{
-				Writer = new StreamWriter(OutputFile);
-
-				Writer.WriteLine(string.Concat("INSERT INTO video.category (name, year, is_private) VALUES (", SqlString(CategoryName), ", ", Year, ", ", IsPrivate.ToString().ToUpper(), ");"));
+				Writer.WriteLine($"INSERT INTO video.category (name, year, is_private) VALUES ({SqlString(_opts.CategoryName)}, {_opts.Year}, {_opts.IsPrivate.ToString().ToUpper()});");
 				Writer.WriteLine();
 
 				Parallel.ForEach(filesToSize, ProcessMovie);
 			}
-			finally
-			{
-				if(Writer != null)
-				{
-					Writer.Close();
-				}
-			}
 		}
 		
 		
-		private void ProcessMovie(string movie)
+		void ProcessMovie(string movie)
 		{
-			Console.WriteLine("Processing: " + Path.GetFileName(movie));
+			Console.WriteLine($"Processing: {Path.GetFileName(movie)}");
 			
 			Ffmpeg ffmpeg = new FfmpegH264();  // switched from webm to h264 7/7/2013
 			
@@ -166,8 +137,8 @@ namespace ConvertVideos
 			 
 			string dir = Path.GetDirectoryName(movie);
 			string file = Path.GetFileName(movie);
-			string fileOut = string.Concat(Path.GetFileNameWithoutExtension(movie), ffmpeg.OutputFileExtension);
-			string fileThumb = string.Concat(Path.GetFileNameWithoutExtension(movie), ".png");
+			string fileOut = $"{Path.GetFileNameWithoutExtension(movie)}{ffmpeg.OutputFileExtension}";
+			string fileThumb = $"{Path.GetFileNameWithoutExtension(movie)}.png";
 			string rawDir = Path.Combine(dir, DIR_RAW);
 			string fullDir = Path.Combine(dir, DIR_FULL);
 			string scaledDir = Path.Combine(dir, DIR_SCALED);
@@ -205,30 +176,16 @@ namespace ConvertVideos
 			
 			lock(_lockObj)
 			{
-				Writer.WriteLine("INSERT INTO video.video (category_id, thumb_height, thumb_width, full_height, full_width, scaled_height, scaled_width,"
-				                                  + " raw_path, thumb_path, full_path, scaled_path, is_private, duration)"
-				                         + " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12});",
-			        "(SELECT currval('video.category_id_seq'))",
-					mm.ThumbHeight,
-					mm.ThumbWidth,
-				    mm.FullHeight,
-				    mm.FullWidth,
-					mm.ScaledHeight,
-					mm.ScaledWidth,
-					SqlString(mm.RawUrl),
-					SqlString(mm.ThumbUrl),
-				    SqlString(mm.FullUrl),
-					SqlString(mm.ScaledUrl),
-				    IsPrivate.ToString().ToUpper(),
-					mm.VideoDuration);
+				Writer.WriteLine("INSERT INTO video.video (category_id, thumb_height, thumb_width, full_height, full_width, scaled_height, scaled_width, "
+				                       + "raw_path, thumb_path, full_path, scaled_path, is_private, duration) "
+				              + $"VALUES ((SELECT currval('video.category_id_seq')), {mm.ThumbHeight}, {mm.ThumbWidth}, {mm.FullHeight}, {mm.FullWidth}, "
+							  + $"{mm.ScaledHeight}, {mm.ScaledWidth}, {SqlString(mm.RawUrl)}, {SqlString(mm.ThumbUrl)}, "
+							  + $"{SqlString(mm.FullUrl)}, {SqlString(mm.ScaledUrl)}, {_opts.IsPrivate.ToString().ToUpper()}, {mm.VideoDuration});");
 				
 				if(!HasSetTeaserVideo)
 				{
 					Writer.WriteLine();
-					Writer.WriteLine("UPDATE video.category SET teaser_image_path = {0}, teaser_image_height = {1}, teaser_image_width = {2} WHERE id = (SELECT currval('video.category_id_seq'));",
-					                 SqlString(mm.ThumbUrl), 
-					                 mm.ThumbHeight, 
-					                 mm.ThumbWidth);
+					Writer.WriteLine($"UPDATE video.category SET teaser_image_path = {SqlString(mm.ThumbUrl)}, teaser_image_height = {mm.ThumbHeight}, teaser_image_width = {mm.ThumbWidth} WHERE id = (SELECT currval('video.category_id_seq'));");
 					Writer.WriteLine();
 					
 					HasSetTeaserVideo = true;
@@ -237,7 +194,7 @@ namespace ConvertVideos
 		}
 
 
-		private void CalculateThumbSize(MovieMetadata mm, ref int height, ref int width)
+		void CalculateThumbSize(MovieMetadata mm, ref int height, ref int width)
 		{
 			float idealAspect = (float)width / (float)height;
 			float actualAspect = (float)mm.VideoWidth / (float)mm.VideoHeight;
@@ -253,20 +210,20 @@ namespace ConvertVideos
 		}
 
 
-		private void PrepareOutputDirectories()
+		void PrepareOutputDirectories()
 		{
-			Directory.CreateDirectory(Path.Combine(VideoDirectory, DIR_RAW));
-			Directory.CreateDirectory(Path.Combine(VideoDirectory, DIR_FULL));
-			Directory.CreateDirectory(Path.Combine(VideoDirectory, DIR_SCALED));
-			Directory.CreateDirectory(Path.Combine(VideoDirectory, DIR_THUMBNAILS));
+			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_RAW));
+			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_FULL));
+			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_SCALED));
+			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_THUMBNAILS));
 		}
 		
 		
-		private IList<string> GetMovieFileList()
+		IList<string> GetMovieFileList()
 		{
 			var list = new List<string>();
 			
-			string[] files = Directory.GetFiles(VideoDirectory);
+			string[] files = Directory.GetFiles(_opts.VideoDirectory);
 			
 			list.AddRange(files.Where(f => SOURCE_EXTENSIONS.Contains(Path.GetExtension(f).ToLower())));
 			
@@ -274,7 +231,7 @@ namespace ConvertVideos
 		}
 		
 		
-		private static string SqlString(string val)
+		static string SqlString(string val)
 		{
 			if(val == null)
 			{
@@ -282,14 +239,8 @@ namespace ConvertVideos
 			}
 			else
 			{
-				return string.Concat("'", val.Replace("'", "''"), "'");
+				return $"'{val.Replace("'", "''")}'";
 			}
-		}
-		
-		
-		private static void ShowUsage(OptionSet options)
-		{
-			options.WriteOptionDescriptions(Console.Out);
 		}
 	}
 }

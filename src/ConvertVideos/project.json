@@ -17,7 +17,21 @@
     "commands": {
         "run": "ConvertVideos" 
     },
+    "dependencies": {
+        "System.CommandLine": "0.1.0-e170103-1"
+    },
     "frameworks": {
-        "net451": { }
+        "netcoreapp1.1": {
+            "dependencies": {
+                "Microsoft.NETCore.App": {
+                    "version": "1.1.0",
+                    "type": "platform"
+                }
+            },
+            "imports": [
+                "dotnet55",
+                "portable-dnxcore50+net45+win8+wp8+wpa81"
+            ]
+        }
     }
 }

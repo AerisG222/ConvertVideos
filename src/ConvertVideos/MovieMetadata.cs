@@ -31,11 +31,6 @@ namespace ConvertVideos
 		
 		public int ThumbHeight { get; set; }
 		public int ThumbWidth { get; set; }
-		
-		public MovieMetadata ()
-		{
-			// do nothing
-		}
 	}
 }
 

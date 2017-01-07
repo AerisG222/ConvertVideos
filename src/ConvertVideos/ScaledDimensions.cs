@@ -23,7 +23,7 @@ namespace ConvertVideos
 		}
 
 
-		private int CalculateScaledDimension(int minDimension, float actualMinDimension, float actualMaxDimension)
+		int CalculateScaledDimension(int minDimension, float actualMinDimension, float actualMaxDimension)
 		{
 			float maxDimension = (float)minDimension * (actualMaxDimension / actualMinDimension);
 
@@ -39,4 +39,3 @@ namespace ConvertVideos
 		}
 	}
 }
-

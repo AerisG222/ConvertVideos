@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 
 
 namespace ConvertVideos
@@ -133,7 +132,7 @@ namespace ConvertVideos
         }
 
 
-        private static MovieMetadata BuildMovieMetadata(Dictionary<string, string> vDic, Dictionary<string, string> aDic)
+        static MovieMetadata BuildMovieMetadata(Dictionary<string, string> vDic, Dictionary<string, string> aDic)
         {
             var mm = new MovieMetadata();
 
@@ -224,7 +223,7 @@ namespace ConvertVideos
         }
 
 
-        private static string CollectMovieMetadataFromFile(string imagePath)
+        static string CollectMovieMetadataFromFile(string imagePath)
         {
             Process ffprobe = null;
 
