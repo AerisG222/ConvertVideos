@@ -1,6 +1,3 @@
-using System;
-
-
 namespace ConvertVideos
 {
 	// http://www.twm-kd.com/linux/encoding-videos-with-ffmpeg-and-h-264/

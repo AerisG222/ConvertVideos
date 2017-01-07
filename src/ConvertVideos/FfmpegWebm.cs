@@ -1,6 +1,3 @@
-using System;
-
-
 namespace ConvertVideos
 {
 	public class FfmpegWebm
