@@ -97,9 +97,9 @@ namespace ConvertVideos
                 }
             }
 
-            if (aDic == null || vDic == null)
+            if (vDic == null)
             {
-                throw new Exception("Expecting to find both an audio and video stream!");
+                throw new Exception("Expecting to find a video stream!");
             }
 
             return BuildMovieMetadata(vDic, aDic);
@@ -203,19 +203,22 @@ namespace ConvertVideos
                 }
             }
 
-            foreach (string key in aDic.Keys)
+            if(aDic != null)
             {
-                switch (key)
+                foreach (string key in aDic.Keys)
                 {
-                    case "codec_name":
-                        mm.AudioCodecName = aDic[key];
-                        break;
-                    case "channels":
-                        mm.AudioChannelCount = int.Parse(aDic[key]);
-                        break;
-                    case "sample_rate":
-                        mm.AudioSampleRate = float.Parse(aDic[key]);
-                        break;
+                    switch (key)
+                    {
+                        case "codec_name":
+                            mm.AudioCodecName = aDic[key];
+                            break;
+                        case "channels":
+                            mm.AudioChannelCount = int.Parse(aDic[key]);
+                            break;
+                        case "sample_rate":
+                            mm.AudioSampleRate = float.Parse(aDic[key]);
+                            break;
+                    }
                 }
             }
 
