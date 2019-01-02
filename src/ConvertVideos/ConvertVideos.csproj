@@ -1,23 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <Description>A small utility to convert videos for my website</Description>
-    <AssemblyTitle>ConvertVideos</AssemblyTitle>
-    <VersionPrefix>0.1.0</VersionPrefix>
-    <Authors>Mike Morano &lt;mmorano@mikeandwan.us&gt;</Authors>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <DebugType>portable</DebugType>
-    <AssemblyName>ConvertVideos</AssemblyName>
-    <OutputType>Exe</OutputType>
-    <PackageId>ConvertVideos</PackageId>
-    <PackageTags>video;movie;convert;ffmpeg</PackageTags>
-    <PackageProjectUrl>https://github.com/AerisG222/ConvertVideos</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/AerisG222/ConvertVideos/blob/master/LICENSE.md</PackageLicenseUrl>
-  </PropertyGroup>
+    <PropertyGroup>
+        <Description>A small utility to convert videos for my website</Description>
+        <AssemblyTitle>ConvertVideos</AssemblyTitle>
+        <VersionPrefix>0.1.0</VersionPrefix>
+        <Authors>Mike Morano &lt;mmorano@mikeandwan.us&gt;</Authors>
+        <TargetFramework>netcoreapp2.2</TargetFramework>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <DebugType>portable</DebugType>
+        <AssemblyName>ConvertVideos</AssemblyName>
+        <OutputType>Exe</OutputType>
+        <PackageId>ConvertVideos</PackageId>
+        <PackageTags>video;movie;convert;ffmpeg</PackageTags>
+        <PackageProjectUrl>https://github.com/AerisG222/ConvertVideos</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/AerisG222/ConvertVideos/blob/master/LICENSE.md</PackageLicenseUrl>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="System.CommandLine" Version="0.1.0-e170819-1" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="System.CommandLine" Version="0.1.0-e170819-1" />
+    </ItemGroup>
 
 </Project>
