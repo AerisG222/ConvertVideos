@@ -21,27 +21,27 @@ namespace ConvertVideos
 		const int THUMB_HEIGHT = 160;
 		const string DEST_EXTENSION = "mp4";
 		static readonly string[] SOURCE_EXTENSIONS = new string[] { ".flv", ".vob", ".mpg", ".mpeg", ".avi", ".3gp", ".m4v", ".mp4", ".mov" };
-		
+
 		Options _opts;
 		object _lockObj = new object();
-		
-		
+
+
 		bool HasSetTeaserVideo { get; set; }
 		StreamWriter Writer { get; set; }
-		
-		
+
+
 		string WebVideoDirectoryRoot
 		{
 			get
 			{
 				string[] dirComponents = Path.GetDirectoryName(_opts.VideoDirectory).Split('/');
 				string dir = dirComponents[dirComponents.Length - 1];
-				
+
 				return $"/movies/{_opts.Year}/{dir}/";
 			}
 		}
-		
-		
+
+
 		string WebRawDirectory
 		{
 			get
@@ -59,7 +59,7 @@ namespace ConvertVideos
 			}
 		}
 
-		
+
 		string WebScaledDirectory
 		{
 			get
@@ -67,8 +67,8 @@ namespace ConvertVideos
 				return $"{WebVideoDirectoryRoot}{DIR_SCALED}/";
 			}
 		}
-		
-		
+
+
 		string WebThumbnailDirectory
 		{
 			get
@@ -76,8 +76,8 @@ namespace ConvertVideos
 				return $"{WebVideoDirectoryRoot}{DIR_THUMBNAILS}/";
 			}
 		}
-		
-		
+
+
 		public Program(Options opts)
 		{
 			_opts = opts;
@@ -88,32 +88,32 @@ namespace ConvertVideos
 		{
 			var opts = new Options();
             opts.Parse(args);
-            
+
 			var app = new Program(opts);
 
 			app.Execute();
 		}
-		
-		
+
+
 		void Execute()
 		{
 			if(!Directory.Exists(_opts.VideoDirectory))
 			{
 				throw new DirectoryNotFoundException($"The video directory specified, {_opts.VideoDirectory}, does not exist.  Please specify a directory containing images.");
 			}
-			
+
 			if(File.Exists(_opts.OutputFile))
 			{
 				throw new IOException($"The specified output file, {_opts.OutputFile}, already exists.  Please remove it before running this process.");
 			}
-			
+
 			Ffmpeg.FfmpegPath = FFMPEG_PATH;
 			Ffmpeg.FfprobePath = FFPROBE_PATH;
-			
+
 			PrepareOutputDirectories();
-			
+
 			IList<string> filesToSize = GetMovieFileList();
-		
+
 			using(var fs = new FileStream(_opts.OutputFile, FileMode.CreateNew))
 			using(Writer = new StreamWriter(fs))
 			{
@@ -123,22 +123,22 @@ namespace ConvertVideos
 				Parallel.ForEach(filesToSize, ProcessMovie);
 			}
 		}
-		
-		
+
+
 		void ProcessMovie(string movie)
 		{
 			Console.WriteLine($"Processing: {Path.GetFileName(movie)}");
-			
+
 			Ffmpeg ffmpeg = new FfmpegH264();  // switched from webm to h264 7/7/2013
-			
+
 			MovieMetadata mm = ffmpeg.GatherMetadata(movie);
 			var fullDimension = new ScaledDimensions(FULL_MIN_DIMENSION, mm.VideoHeight, mm.VideoWidth);
 			var scaledDimension = new ScaledDimensions(SCALE_MIN_DIMENSION, mm.VideoHeight, mm.VideoWidth);
-			 
+
 			string dir = Path.GetDirectoryName(movie);
 			string file = Path.GetFileName(movie);
 			string fileOut = $"{Path.GetFileNameWithoutExtension(movie)}{ffmpeg.OutputFileExtension}";
-			string fileThumb = $"{Path.GetFileNameWithoutExtension(movie)}.png";
+			string fileThumb = $"{Path.GetFileNameWithoutExtension(movie)}.jpg";
 			string rawDir = Path.Combine(dir, DIR_RAW);
 			string fullDir = Path.Combine(dir, DIR_FULL);
 			string scaledDir = Path.Combine(dir, DIR_SCALED);
@@ -173,7 +173,7 @@ namespace ConvertVideos
 			mm.ThumbWidth = thumbWidth;
 			mm.ThumbUrl = Path.Combine(WebThumbnailDirectory, fileThumb);
 			ffmpeg.CreateThumbnail(Path.Combine(rawDir, file), Path.Combine(thumbDir, fileThumb), mm.ThumbWidth, mm.ThumbHeight);
-			
+
 			lock(_lockObj)
 			{
 				Writer.WriteLine("INSERT INTO video.video (category_id, thumb_height, thumb_width, full_height, full_width, scaled_height, scaled_width, "
@@ -181,13 +181,13 @@ namespace ConvertVideos
 				              + $"VALUES ((SELECT currval('video.category_id_seq')), {mm.ThumbHeight}, {mm.ThumbWidth}, {mm.FullHeight}, {mm.FullWidth}, "
 							  + $"{mm.ScaledHeight}, {mm.ScaledWidth}, {SqlString(mm.RawUrl)}, {SqlString(mm.ThumbUrl)}, "
 							  + $"{SqlString(mm.FullUrl)}, {SqlString(mm.ScaledUrl)}, {_opts.IsPrivate.ToString().ToUpper()}, {mm.VideoDuration});");
-				
+
 				if(!HasSetTeaserVideo)
 				{
 					Writer.WriteLine();
 					Writer.WriteLine($"UPDATE video.category SET teaser_image_path = {SqlString(mm.ThumbUrl)}, teaser_image_height = {mm.ThumbHeight}, teaser_image_width = {mm.ThumbWidth} WHERE id = (SELECT currval('video.category_id_seq'));");
 					Writer.WriteLine();
-					
+
 					HasSetTeaserVideo = true;
 				}
 			}
@@ -217,20 +217,20 @@ namespace ConvertVideos
 			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_SCALED));
 			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_THUMBNAILS));
 		}
-		
-		
+
+
 		IList<string> GetMovieFileList()
 		{
 			var list = new List<string>();
-			
+
 			string[] files = Directory.GetFiles(_opts.VideoDirectory);
-			
+
 			list.AddRange(files.Where(f => SOURCE_EXTENSIONS.Contains(Path.GetExtension(f).ToLower())));
-			
+
 			return list;
 		}
-		
-		
+
+
 		static string SqlString(string val)
 		{
 			if(val == null)
