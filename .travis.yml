@@ -3,15 +3,15 @@ language: csharp
 matrix:
   include:
     - os: linux
-      dist: trusty
+      dist: xenial
       sudo: required
-      dotnet: 2.0.0
+      dotnet: 2.2
       mono: none
       env: CONFIGURATION=Debug DOTNETCORE=1
     - os: linux
-      dist: trusty
+      dist: xenial
       sudo: required
-      dotnet: 2.0.0
+      dotnet: 2.2
       mono: none
       env: CONFIGURATION=Release DOTNETCORE=1
 
