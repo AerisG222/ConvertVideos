@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using NExifTool;
 using NMagickWand;
 
 
@@ -26,6 +27,7 @@ namespace ConvertVideos
 		const float THUMB_SQ_ASPECT = THUMB_SQ_WIDTH / THUMB_SQ_HEIGHT;
 		const string DEST_EXTENSION = "mp4";
 		static readonly string[] SOURCE_EXTENSIONS = new string[] { ".flv", ".vob", ".mpg", ".mpeg", ".avi", ".3gp", ".m4v", ".mp4", ".mov" };
+		static readonly ExifTool _exifTool = new ExifTool(new ExifToolOptions());
 
 		Options _opts;
 		object _lockObj = new object();
@@ -193,6 +195,8 @@ namespace ConvertVideos
 			GenerateThumbSq(ffmpeg, localRawFile, localThumbSqFile, mm);
 			mm.ThumbSqSize = GetFileSize(localThumbSqFile);
 
+			PopulateVideoMetadata(localRawFile, mm);
+
 			lock(_lockObj)
 			{
 				Writer.WriteLine(
@@ -291,6 +295,22 @@ namespace ConvertVideos
 				mm.ThumbSqWidth = THUMB_SQ_WIDTH;
             }
 		}
+
+
+		void PopulateVideoMetadata(string localSourceFile, MovieMetadata mm)
+        {
+			var tags = _exifTool.GetTagsAsync(localSourceFile).Result;
+
+			if(mm.VideoCreationTime == null)
+			{
+				mm.VideoCreationTime = tags.SingleOrDefaultPrimaryTag("CreateDate")?.TryGetDateTime();
+			}
+
+			mm.Latitude = tags.SingleOrDefaultPrimaryTag("GPSLatitude")?.TryGetDouble();
+			mm.LatitudeRef = tags.SingleOrDefaultPrimaryTag("GPSLatitudeRef")?.Value?.Substring(0, 1);
+			mm.Longitude = tags.SingleOrDefaultPrimaryTag("GPSLongitude")?.TryGetDouble();
+			mm.LongitudeRef = tags.SingleOrDefaultPrimaryTag("GPSLongitudeRef")?.Value?.Substring(0, 1);
+        }
 
 
 		void PrepareOutputDirectories()
