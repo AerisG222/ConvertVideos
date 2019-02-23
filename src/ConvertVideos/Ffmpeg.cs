@@ -127,6 +127,7 @@ namespace ConvertVideos
                 ffmpeg.StartInfo.Arguments = arguments;
                 ffmpeg.StartInfo.UseShellExecute = false;
                 ffmpeg.StartInfo.RedirectStandardOutput = true;
+                ffmpeg.StartInfo.RedirectStandardError = true;
                 ffmpeg.Start();
 
                 ffmpeg.StandardOutput.ReadToEnd();
@@ -246,6 +247,7 @@ namespace ConvertVideos
                 ffprobe.StartInfo.Arguments = string.Concat("-show_streams \"", imagePath, "\"");
                 ffprobe.StartInfo.UseShellExecute = false;
                 ffprobe.StartInfo.RedirectStandardOutput = true;
+                ffprobe.StartInfo.RedirectStandardError = true;
                 ffprobe.Start();
 
                 string output = ffprobe.StandardOutput.ReadToEnd();
