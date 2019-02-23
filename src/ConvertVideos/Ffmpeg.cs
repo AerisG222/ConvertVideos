@@ -26,7 +26,15 @@ namespace ConvertVideos
 
         public void CreateThumbnail(string file, string outfile, int thumbWidth, int thumbHeight)
         {
-            var args = string.Concat("-i \"", file, "\" -s ", thumbWidth, "x", thumbHeight, " -ss 00:00:02 -vframes 1 \"", outfile, "\"");
+            var args = $"-i \"{file}\" -s {thumbWidth}x{thumbHeight} -ss 00:00:02 -vframes 1 \"{outfile}\"";
+
+            ExecuteFfmpeg(args);
+        }
+
+
+        public void ExtractFrame(string moviePath, string imagePath)
+        {
+            var args = $"-i \"{moviePath}\" -ss 00:00:02 -vframes 1 \"{imagePath}\"";
 
             ExecuteFfmpeg(args);
         }
@@ -144,10 +152,10 @@ namespace ConvertVideos
                         mm.VideoCodecName = vDic[key];
                         break;
                     case "width":
-                        mm.VideoWidth = int.Parse(vDic[key]);
+                        mm.RawWidth = int.Parse(vDic[key]);
                         break;
                     case "height":
-                        mm.VideoHeight = int.Parse(vDic[key]);
+                        mm.RawHeight = int.Parse(vDic[key]);
                         break;
                     case "r_frame_rate":
                         mm.VideoFrameRate = vDic[key];
@@ -196,10 +204,10 @@ namespace ConvertVideos
             {
                 if (Math.Abs(mm.Rotation) == 90 || Math.Abs(mm.Rotation) == 270)
                 {
-                    var tmp = mm.VideoWidth;
-					
-                    mm.VideoWidth = mm.VideoHeight;
-                    mm.VideoHeight = tmp;
+                    var tmp = mm.RawWidth;
+
+                    mm.RawWidth = mm.RawHeight;
+                    mm.RawHeight = tmp;
                 }
             }
 
