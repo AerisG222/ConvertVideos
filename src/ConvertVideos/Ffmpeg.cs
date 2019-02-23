@@ -24,14 +24,6 @@ namespace ConvertVideos
         public abstract void Convert(string infile, string outfile, int newWidth, int newHeight);
 
 
-        public void CreateThumbnail(string file, string outfile, int thumbWidth, int thumbHeight)
-        {
-            var args = $"-i \"{file}\" -s {thumbWidth}x{thumbHeight} -ss 00:00:02 -vframes 1 \"{outfile}\"";
-
-            ExecuteFfmpeg(args);
-        }
-
-
         public void ExtractFrame(string moviePath, string imagePath)
         {
             var args = $"-i \"{moviePath}\" -ss 00:00:02 -vframes 1 \"{imagePath}\"";

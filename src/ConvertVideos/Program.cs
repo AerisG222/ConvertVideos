@@ -184,19 +184,11 @@ namespace ConvertVideos
 			mm.ScaledSize = GetFileSize(localScaledFile);
 
 			// generate thumbnail
-			var thumbWidth = THUMB_WIDTH;
-			var thumbHeight = THUMB_HEIGHT;
-			CalculateThumbSize(mm, ref thumbHeight, ref thumbWidth);
-
-			mm.ThumbHeight = thumbHeight;
-			mm.ThumbWidth = thumbWidth;
 			mm.ThumbUrl = Path.Combine(WebThumbnailDirectory, fileThumb);
-			ffmpeg.CreateThumbnail(localRawFile, localThumbnailFile, mm.ThumbWidth, mm.ThumbHeight);
+			GenerateThumbnail(ffmpeg, localRawFile, localThumbnailFile, mm);
 			mm.ThumbSize = GetFileSize(localThumbnailFile);
 
 			// generate thumb_sq
-			mm.ThumbSqHeight = THUMB_SQ_HEIGHT;
-			mm.ThumbSqWidth = THUMB_SQ_WIDTH;
 			mm.ThumbSqUrl = Path.Combine(WebThumbSqDirectory, fileThumb);
 			GenerateThumbSq(ffmpeg, localRawFile, localThumbSqFile, mm);
 			mm.ThumbSqSize = GetFileSize(localThumbSqFile);
@@ -237,19 +229,24 @@ namespace ConvertVideos
 		}
 
 
-		void CalculateThumbSize(MovieMetadata mm, ref int height, ref int width)
+		void GenerateThumbnail(Ffmpeg ffmpeg, string localSourceFile, string localThumbnailFile, MovieMetadata mm)
 		{
-			float idealAspect = (float)width / (float)height;
-			float actualAspect = (float)mm.RawWidth / (float)mm.RawHeight;
+			ffmpeg.ExtractFrame(localSourceFile, localThumbnailFile);
 
-			if(idealAspect >= actualAspect)
-			{
-				width = (int)(actualAspect * (float)height);
-			}
-			else
-			{
-				height = (int)((float)width / actualAspect);
-			}
+			using(var wand = new MagickWand(localThumbnailFile))
+            {
+				wand.GetLargestDimensionsKeepingAspectRatio(THUMB_WIDTH, THUMB_HEIGHT, out uint width, out uint height);
+                wand.ScaleImage(width, height);
+
+                // sharpen after potentially resizing
+                // http://www.imagemagick.org/Usage/resize/#resize_unsharp
+                wand.UnsharpMaskImage(0, 0.7, 0.7, 0.008);
+
+                wand.WriteImage(localThumbnailFile, true);
+
+				mm.ThumbHeight = (int) height;
+				mm.ThumbWidth = (int) width;
+            }
 		}
 
 
@@ -289,6 +286,9 @@ namespace ConvertVideos
                 wand.UnsharpMaskImage(0, 0.7, 0.7, 0.008);
 
                 wand.WriteImage(localThumbSqFile, true);
+
+				mm.ThumbSqHeight = THUMB_SQ_HEIGHT;
+				mm.ThumbSqWidth = THUMB_SQ_WIDTH;
             }
 		}
 
