@@ -118,11 +118,11 @@ namespace ConvertVideos
                 ffmpeg.StartInfo.FileName = FfmpegPath;
                 ffmpeg.StartInfo.Arguments = arguments;
                 ffmpeg.StartInfo.UseShellExecute = false;
-                ffmpeg.StartInfo.RedirectStandardOutput = true;
-                ffmpeg.StartInfo.RedirectStandardError = true;
+                ffmpeg.StartInfo.RedirectStandardOutput = false;
+                ffmpeg.StartInfo.RedirectStandardError = false;
                 ffmpeg.Start();
 
-                ffmpeg.StandardOutput.ReadToEnd();
+                //ffmpeg.StandardOutput.ReadToEnd();
 
                 ffmpeg.WaitForExit();
             }
