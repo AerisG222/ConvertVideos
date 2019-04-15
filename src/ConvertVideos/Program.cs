@@ -130,13 +130,17 @@ namespace ConvertVideos
 
 			IList<string> filesToSize = GetMovieFileList();
 
+			// try to leave a couple threads available for the GC
+			var vpus = Math.Max(Environment.ProcessorCount - 1, 1);
+            var opts = new ParallelOptions { MaxDegreeOfParallelism = vpus };
+
 			using(var fs = new FileStream(_opts.OutputFile, FileMode.CreateNew))
 			using(Writer = new StreamWriter(fs))
 			{
 				Writer.WriteLine($"INSERT INTO video.category (name, year, is_private) VALUES ({SqlString(_opts.CategoryName)}, {_opts.Year}, {_opts.IsPrivate.ToString().ToUpper()});");
 				Writer.WriteLine();
 
-				Parallel.ForEach(filesToSize, ProcessMovie);
+				Parallel.ForEach(filesToSize, opts, ProcessMovie);
 
 				Writer.WriteLine();
 				WriteCategoryUpdateTotals();
