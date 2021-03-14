@@ -24,9 +24,9 @@ namespace ConvertVideos
         public abstract void Convert(string infile, string outfile, int newWidth, int newHeight);
 
 
-        public void ExtractFrame(string moviePath, string imagePath)
+        public void ExtractFrame(string moviePath, string imagePath, int seconds)
         {
-            var args = $"-i \"{moviePath}\" -ss 00:00:02 -vframes 1 \"{imagePath}\"";
+            var args = $"-i \"{moviePath}\" -ss 00:00:{seconds:00} -vframes 1 \"{imagePath}\"";
 
             ExecuteFfmpeg(args);
         }

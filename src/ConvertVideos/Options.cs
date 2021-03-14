@@ -1,82 +1,120 @@
 using System;
+using System.Collections.Generic;
 using System.CommandLine;
-
+using System.CommandLine.Invocation;
+using System.IO;
+using System.Linq;
 
 namespace ConvertVideos
 {
     public class Options
     {
-        bool _help;
-        string _catname;
-        string _outfile;
-        string _viddir;
-        string _webdir;
-        bool _isPrivate;
-        int _year;
-
-        public string CategoryName { get { return _catname; } }
-        public string OutputFile { get { return _outfile; } }
-        public string VideoDirectory { get { return _viddir; } }
-        public string WebDirectory  { get { return _webdir; } }
-        public bool IsPrivate { get { return _isPrivate; } }
-        public int Year { get { return _year; } }
-
+        public string CategoryName { get; private set; }
+        public FileInfo OutputFile { get; private set; }
+        public DirectoryInfo VideoDirectory { get; private set; }
+        public string WebDirectory  { get; private set; }
+        public bool IsPrivate { get; private set; }
+        public int Year { get; private set; }
 
         public void Parse(string[] args)
         {
-            ArgumentSyntax.Parse(args, syntax =>
+            var rootCommand = BuildRootCommand();
+
+            rootCommand.Invoke(args);
+
+            var errors = ValidateOptions();
+
+            if(errors.Any())
             {
-                syntax.ApplicationName = "ConvertVideos";
+                Console.WriteLine("Errors processing options:");
 
-                syntax.HandleHelp = false;
-
-                syntax.DefineOption("h|help", ref _help, "This help screen.");
-                syntax.DefineOption("c|catname", ref _catname, "The name for the category to represent the videos in the directory.");
-                syntax.DefineOption("o|outfile", ref _outfile, "The path to the SQL file to generate.");
-                syntax.DefineOption("v|viddir", ref _viddir, "The directory containing the source videos to resize: (/home/mmorano/Desktop/mypix/).");
-                syntax.DefineOption("w|webdir", ref _webdir, "The full URL path to the image directory: (/images/2009/mypix/).");
-                syntax.DefineOption("x|private", ref _isPrivate, "Mark the category as private so only the admin can view these pictures.");
-                syntax.DefineOption("y|year", ref _year, "The year the pictures were taken.");
-
-                if(_help)
+                foreach(var err in errors)
                 {
-                    Console.WriteLine(syntax.GetHelpText());
-                    Environment.Exit(0);
+                    Console.WriteLine($"  - {err}");
                 }
-                else
-                {
-                    ValidateOptions(syntax);
-                }
-            });
+
+                Console.WriteLine("Exiting");
+
+                Environment.Exit(1);
+            }
         }
 
-
-        public void ValidateOptions(ArgumentSyntax syntax)
+        IEnumerable<string> ValidateOptions()
         {
-            if(string.IsNullOrWhiteSpace(OutputFile))
+            var errors = new List<string>();
+
+            if(OutputFile == null)
             {
-                syntax.ReportError("You must specify an output file.");
+                errors.Add("You must specify an output file.");
             }
-		    
-            if(string.IsNullOrWhiteSpace(VideoDirectory))
+
+            if(VideoDirectory == null)
             {
-                syntax.ReportError("You must specify the video directory.");
+                errors.Add("You must specify the video directory.");
             }
 
             if(string.IsNullOrWhiteSpace(WebDirectory))
             {
-                syntax.ReportError("You must specify the web directory.");
+                errors.Add("You must specify the web directory.");
             }
 
             if(string.IsNullOrWhiteSpace(CategoryName))
             {
-                syntax.ReportError("Please specify the category name.");
+                errors.Add("Please specify the category name.");
             }
 
 			if(Year == 0)
 			{
-				syntax.ReportError("Please specify the year.");
+				errors.Add("Please specify the year.");
 			}
+
+            return errors;
+        }
+
+        RootCommand BuildRootCommand()
+        {
+            var rootCommand = new RootCommand
+            {
+                new Option<string>(
+                    new string[] {"-c", "--category-name"},
+                    "The name for the category to represent the videos in the directory."
+                ),
+                new Option<FileInfo>(
+                    new string[] {"-o", "--output-file"},
+                    "The path to the SQL file to generate."
+                ),
+                new Option<DirectoryInfo>(
+                    new string[] {"-v", "--video-directory"},
+                    "The directory containing the source videos to resize: (/home/mmorano/Desktop/mypix/)."
+                ),
+                new Option<string>(
+                    new string[] {"-w", "--web-directory"},
+                    "The full URL path to the image directory: (/images/2009/mypix/)."
+                ),
+                new Option<bool>(
+                    new string[] {"-x", "--is-private"},
+                    "Mark the category as private so only the admin can view these pictures."
+                ),
+                new Option<int>(
+                    new string[] {"-y", "--year"},
+                    "The year the pictures were taken."
+                )
+            };
+
+            rootCommand.Description = "A utility to scale videos to be shown on mikeandwan.us";
+
+            rootCommand.Handler = CommandHandler.Create<string, FileInfo, DirectoryInfo, string, bool, int>(
+                (categoryName, outputFile, videoDirectory, webDirectory, isPrivate, year) => {
+                    CategoryName = categoryName;
+                    OutputFile = outputFile;
+                    VideoDirectory = videoDirectory;
+                    WebDirectory = webDirectory;
+                    IsPrivate = isPrivate;
+                    Year = year;
+                }
+            );
+
+            return rootCommand;
         }
     }
 }

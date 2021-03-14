@@ -41,7 +41,7 @@ namespace ConvertVideos
 		{
 			get
 			{
-				string[] dirComponents = Path.GetDirectoryName(_opts.VideoDirectory).Split('/');
+				string[] dirComponents = _opts.VideoDirectory.FullName.Split('/');
 				string dir = dirComponents[dirComponents.Length - 1];
 
 				return $"/movies/{_opts.Year}/{dir}/";
@@ -113,12 +113,12 @@ namespace ConvertVideos
 
 		void Execute()
 		{
-			if(!Directory.Exists(_opts.VideoDirectory))
+			if(!_opts.VideoDirectory.Exists)
 			{
 				throw new DirectoryNotFoundException($"The video directory specified, {_opts.VideoDirectory}, does not exist.  Please specify a directory containing images.");
 			}
 
-			if(File.Exists(_opts.OutputFile))
+			if(_opts.OutputFile.Exists)
 			{
 				throw new IOException($"The specified output file, {_opts.OutputFile}, already exists.  Please remove it before running this process.");
 			}
@@ -134,7 +134,7 @@ namespace ConvertVideos
 			var vpus = Math.Max(Environment.ProcessorCount - 1, 1);
             var opts = new ParallelOptions { MaxDegreeOfParallelism = vpus };
 
-			using(var fs = new FileStream(_opts.OutputFile, FileMode.CreateNew))
+			using(var fs = new FileStream(_opts.OutputFile.FullName, FileMode.CreateNew))
 			using(Writer = new StreamWriter(fs))
 			{
 				Writer.WriteLine($"INSERT INTO video.category (name, year, is_private) VALUES ({SqlString(_opts.CategoryName)}, {_opts.Year}, {_opts.IsPrivate.ToString().ToUpper()});");
@@ -287,10 +287,21 @@ namespace ConvertVideos
 			);
 		}
 
+		int GetThumbnailSeconds(MovieMetadata mm)
+		{
+			var frameAtSecond = 2;
+
+			if(mm.VideoDuration < 2)
+			{
+				frameAtSecond = 0;
+			}
+
+			return frameAtSecond;
+		}
 
 		void GenerateThumbnail(Ffmpeg ffmpeg, string localSourceFile, string localThumbnailFile, MovieMetadata mm)
 		{
-			ffmpeg.ExtractFrame(localSourceFile, localThumbnailFile);
+			ffmpeg.ExtractFrame(localSourceFile, localThumbnailFile, GetThumbnailSeconds(mm));
 
 			using(var wand = new MagickWand(localThumbnailFile))
             {
@@ -308,10 +319,9 @@ namespace ConvertVideos
             }
 		}
 
-
 		void GenerateThumbSq(Ffmpeg ffmpeg, string localSourceFile, string localThumbSqFile, MovieMetadata mm)
 		{
-			ffmpeg.ExtractFrame(localSourceFile, localThumbSqFile);
+			ffmpeg.ExtractFrame(localSourceFile, localThumbSqFile, GetThumbnailSeconds(mm));
 
 			using(var wand = new MagickWand(localThumbSqFile))
             {
@@ -370,11 +380,11 @@ namespace ConvertVideos
 
 		void PrepareOutputDirectories()
 		{
-			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_RAW));
-			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_FULL));
-			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_SCALED));
-			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_THUMBNAILS));
-			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory, DIR_THUMB_SQ));
+			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory.FullName, DIR_RAW));
+			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory.FullName, DIR_FULL));
+			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory.FullName, DIR_SCALED));
+			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory.FullName, DIR_THUMBNAILS));
+			Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory.FullName, DIR_THUMB_SQ));
 		}
 
 
@@ -389,9 +399,9 @@ namespace ConvertVideos
 		{
 			var list = new List<string>();
 
-			string[] files = Directory.GetFiles(_opts.VideoDirectory);
+			var files = _opts.VideoDirectory.GetFiles();
 
-			list.AddRange(files.Where(f => SOURCE_EXTENSIONS.Contains(Path.GetExtension(f).ToLower())));
+			list.AddRange(files.Where(f => SOURCE_EXTENSIONS.Contains(f.Extension.ToLower())).Select(f => f.FullName));
 
 			return list;
 		}
