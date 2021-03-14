@@ -41,10 +41,7 @@ namespace ConvertVideos
 		{
 			get
 			{
-				string[] dirComponents = _opts.VideoDirectory.FullName.Split('/');
-				string dir = dirComponents[dirComponents.Length - 1];
-
-				return $"/movies/{_opts.Year}/{dir}/";
+				return $"/movies/{_opts.Year}/{_opts.VideoDirectory.Name}/";
 			}
 		}
 
