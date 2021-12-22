@@ -134,7 +134,17 @@ namespace ConvertVideos
 			using(var fs = new FileStream(_opts.OutputFile.FullName, FileMode.CreateNew))
 			using(Writer = new StreamWriter(fs))
 			{
-				Writer.WriteLine($"INSERT INTO video.category (name, year, is_private) VALUES ({SqlString(_opts.CategoryName)}, {_opts.Year}, {_opts.IsPrivate.ToString().ToUpper()});");
+				Writer.WriteLine($"INSERT INTO video.category (name, year) VALUES ({SqlString(_opts.CategoryName)}, {_opts.Year});");
+
+				foreach(var role in _opts.AllowedRoles) {
+					Writer.WriteLine(
+						$"INSERT INTO video.category_role (category_id, role_id) VALUES (" +
+						$"    (SELECT currval('video.category_id_seq')), " +
+						$"    (SELECT id FROM maw.role WHERE name = {SqlString(role)})" +
+						$" );"
+					);
+				}
+
 				Writer.WriteLine();
 
 				Parallel.ForEach(filesToSize, opts, ProcessMovie);
@@ -210,7 +220,7 @@ namespace ConvertVideos
 					    $"full_height, full_width, full_path, full_size, " +
 						$"scaled_height, scaled_width, scaled_path, scaled_size, " +
 				    	$"raw_height, raw_width, raw_path, raw_size, " +
-						$"is_private, duration, create_date, " +
+						$"duration, create_date, " +
 						$"gps_latitude, gps_latitude_ref_id, gps_longitude, gps_longitude_ref_id) VALUES (" +
 				        $"(SELECT currval('video.category_id_seq')), " +
 						$"{mm.ThumbHeight}, " +
@@ -233,7 +243,6 @@ namespace ConvertVideos
 						$"{mm.RawWidth}, " +
 						$"{SqlString(mm.RawUrl)}, " +
 						$"{mm.RawSize}, " +
-						$"{_opts.IsPrivate.ToString().ToUpper()}, " +
 						$"{SqlNumber(mm.VideoDuration)}, " +
 						$"{SqlTimestamp(mm.VideoCreationTime)}, " +
 						$"{SqlNumber(mm.Latitude)}, " +
