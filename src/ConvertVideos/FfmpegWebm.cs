@@ -5,14 +5,12 @@ public class FfmpegWebm
 {
     public override string OutputFileExtension { get { return ".webm"; } }
 
-
     public override void Convert(string infile, string outfile)
     {
         var args = string.Concat("-i \"", infile, "\" -f webm -vcodec libvpx -acodec libvorbis -aq 50 \"", outfile, "\"");
 
         ExecuteFfmpeg(args);
     }
-
 
     public override void Convert(string infile, string outfile, int newWidth, int newHeight)
     {
@@ -21,4 +19,3 @@ public class FfmpegWebm
         ExecuteFfmpeg(args);
     }
 }
-

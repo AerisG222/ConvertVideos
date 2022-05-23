@@ -44,4 +44,3 @@ public class MovieMetadata
     public long ThumbSqSize { get; set; }
     public string ThumbSqUrl { get; set; }
 }
-

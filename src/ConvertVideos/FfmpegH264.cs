@@ -8,7 +8,6 @@ public class FfmpegH264
 {
     public override string OutputFileExtension { get { return ".mp4"; } }
 
-
     // note: for some videos, the audio in the source was screwy, and caused encoding issues - to address this, added the following parameter (just before the outfile):
     // -b:a 32k
     // however, i prefer not to keep this in here, so if you run into this issue again, try adding it back to see if it fixes it!
@@ -20,7 +19,6 @@ public class FfmpegH264
         ExecuteFfmpeg(args);
     }
 
-
     public override void Convert(string infile, string outfile, int newWidth, int newHeight)
     {
         var args = string.Concat("-i \"", infile, "\" -vcodec libx264 -preset slow -crf 20 -vf scale=\"", newWidth, ":", newHeight, "\" -strict -2 -acodec aac \"", outfile, "\"");
@@ -29,4 +27,3 @@ public class FfmpegH264
         ExecuteFfmpeg(args);
     }
 }
-

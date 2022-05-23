@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-
 namespace ConvertVideos;
 
 public abstract class Ffmpeg
@@ -17,12 +16,10 @@ public abstract class Ffmpeg
     public static string FfmpegPath { get; set; }
     public static string FfprobePath { get; set; }
 
-
     // abstract methods - to be implemented by specific codec writers
     public abstract string OutputFileExtension { get; }
     public abstract void Convert(string infile, string outfile);
     public abstract void Convert(string infile, string outfile, int newWidth, int newHeight);
-
 
     public void ExtractFrame(string moviePath, string imagePath, int seconds)
     {
@@ -30,7 +27,6 @@ public abstract class Ffmpeg
 
         ExecuteFfmpeg(args);
     }
-
 
     public MovieMetadata GatherMetadata(string file)
     {
@@ -105,7 +101,6 @@ public abstract class Ffmpeg
         return BuildMovieMetadata(vDic, aDic);
     }
 
-
     protected void ExecuteFfmpeg(string arguments)
     {
         Process ffmpeg = null;
@@ -131,7 +126,6 @@ public abstract class Ffmpeg
             ffmpeg.Dispose();
         }
     }
-
 
     static MovieMetadata BuildMovieMetadata(Dictionary<string, string> vDic, Dictionary<string, string> aDic)
     {
@@ -226,7 +220,6 @@ public abstract class Ffmpeg
         return mm;
     }
 
-
     static string CollectMovieMetadataFromFile(string imagePath)
     {
         Process ffprobe = null;
@@ -254,4 +247,3 @@ public abstract class Ffmpeg
         }
     }
 }
-

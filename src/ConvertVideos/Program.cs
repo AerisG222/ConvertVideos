@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using NExifTool;
 using NMagickWand;
 
-
 namespace ConvertVideos;
 
 public class Program
@@ -32,10 +31,8 @@ public class Program
     Options _opts;
     object _lockObj = new object();
 
-
     bool HasSetTeaserVideo { get; set; }
     StreamWriter Writer { get; set; }
-
 
     string WebVideoDirectoryRoot
     {
@@ -45,7 +42,6 @@ public class Program
         }
     }
 
-
     string WebRawDirectory
     {
         get
@@ -53,7 +49,6 @@ public class Program
             return $"{WebVideoDirectoryRoot}{DIR_RAW}/";
         }
     }
-
 
     string WebFullsizeDirectory
     {
@@ -63,7 +58,6 @@ public class Program
         }
     }
 
-
     string WebScaledDirectory
     {
         get
@@ -71,7 +65,6 @@ public class Program
             return $"{WebVideoDirectoryRoot}{DIR_SCALED}/";
         }
     }
-
 
     string WebThumbnailDirectory
     {
@@ -81,7 +74,6 @@ public class Program
         }
     }
 
-
     string WebThumbSqDirectory
     {
         get
@@ -90,12 +82,10 @@ public class Program
         }
     }
 
-
     public Program(Options opts)
     {
         _opts = opts;
     }
-
 
     public static void Main(string[] args)
     {
@@ -106,7 +96,6 @@ public class Program
 
         app.Execute();
     }
-
 
     void Execute()
     {
@@ -154,7 +143,6 @@ public class Program
             WriteCategoryUpdateTotals();
         }
     }
-
 
     void ProcessMovie(string movie)
     {
@@ -273,7 +261,6 @@ public class Program
         }
     }
 
-
     void WriteCategoryUpdateTotals()
     {
         Writer.WriteLine(
@@ -368,7 +355,6 @@ public class Program
         }
     }
 
-
     void PopulateVideoMetadata(string localSourceFile, MovieMetadata mm)
     {
         var tags = _exifTool.GetTagsAsync(localSourceFile).Result;
@@ -384,7 +370,6 @@ public class Program
         mm.LongitudeRef = tags.SingleOrDefaultPrimaryTag("GPSLongitudeRef")?.Value?.Substring(0, 1);
     }
 
-
     void PrepareOutputDirectories()
     {
         Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory.FullName, DIR_RAW));
@@ -393,7 +378,6 @@ public class Program
         Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory.FullName, DIR_THUMBNAILS));
         Directory.CreateDirectory(Path.Combine(_opts.VideoDirectory.FullName, DIR_THUMB_SQ));
     }
-
 
     long GetFileSize(string file)
     {
@@ -413,7 +397,6 @@ public class Program
         return list;
     }
 
-
     static string SqlNumber(object num)
     {
         if (num == null)
@@ -423,7 +406,6 @@ public class Program
 
         return num.ToString();
     }
-
 
     static string SqlString(string val)
     {
@@ -436,7 +418,6 @@ public class Program
             return $"'{val.Replace("'", "''")}'";
         }
     }
-
 
     string SqlTimestamp(DateTime? dt)
     {
