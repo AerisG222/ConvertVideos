@@ -95,6 +95,8 @@ public class Program
         var app = new Program(opts);
 
         app.Execute();
+
+        Environment.Exit(0);
     }
 
     void Execute()

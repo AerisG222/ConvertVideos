@@ -3,9 +3,9 @@
     <PropertyGroup>
         <Description>A small utility to convert videos for my website</Description>
         <AssemblyTitle>ConvertVideos</AssemblyTitle>
-        <VersionPrefix>0.1.0</VersionPrefix>
+        <VersionPrefix>0.2.0</VersionPrefix>
         <Authors>Mike Morano &lt;mmorano@mikeandwan.us&gt;</Authors>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <DebugType>portable</DebugType>
         <AssemblyName>ConvertVideos</AssemblyName>
