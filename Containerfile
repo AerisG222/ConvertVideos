@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 
 WORKDIR /src
 
@@ -10,7 +10,7 @@ RUN dotnet publish -o /app -c Release -r linux-x64 --no-self-contained
 
 
 # build runtime image
-FROM fedora:36
+FROM fedora:37
 
 RUN dnf install -y \
     https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
@@ -19,7 +19,7 @@ RUN dnf install -y \
   	&& rm -rf /var/cache/yum
 
 RUN dnf install -y \
-    dotnet-runtime-6.0 \
+    dotnet-runtime-7.0 \
     perl-Image-ExifTool \
     ImageMagick-devel \
     ffmpeg \
