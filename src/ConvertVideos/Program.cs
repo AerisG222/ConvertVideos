@@ -2,10 +2,12 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using ConvertVideos.Processor;
 using ConvertVideos.ResultWriter;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NExifTool;
 
 namespace ConvertVideos;
 
@@ -49,7 +51,9 @@ public class Program
             {
                 services
                     .AddSingleton(opts)
+                    .AddSingleton(new ExifTool(new ExifToolOptions()))
                     .AddSingleton<IResultWriter, PgSqlResultWriter>()
+                    .AddSingleton<IVideoProcessor, VideoProcessor>()
                     .AddHostedService<Worker>();
             });
     }
