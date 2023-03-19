@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using NExifTool;
-using NMagickWand;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Processing.Processors.Transforms;
 
 namespace ConvertVideos;
 
@@ -299,62 +301,44 @@ public class Program
     {
         ffmpeg.ExtractFrame(localSourceFile, localThumbnailFile, GetThumbnailSeconds(mm));
 
-        using (var wand = new MagickWand(localThumbnailFile))
-        {
-            wand.GetLargestDimensionsKeepingAspectRatio(THUMB_WIDTH, THUMB_HEIGHT, out uint width, out uint height);
-            wand.ScaleImage(width, height);
+        using var image = Image.Load(localThumbnailFile);
 
-            // sharpen after potentially resizing
-            // http://www.imagemagick.org/Usage/resize/#resize_unsharp
-            wand.UnsharpMaskImage(0, 0.7, 0.7, 0.008);
+        image.Mutate(ctx => ctx
+            .Resize(new ResizeOptions()
+            {
+                Mode = ResizeMode.Max,
+                Position = AnchorPositionMode.Center,
+                Size = new Size(THUMB_WIDTH, THUMB_HEIGHT),
+                Sampler = LanczosResampler.Lanczos3
+            })
+        );
 
-            wand.WriteImage(localThumbnailFile, true);
+        image.SaveAsJpeg(localThumbnailFile);
 
-            mm.ThumbHeight = (int)height;
-            mm.ThumbWidth = (int)width;
-        }
+        mm.ThumbHeight = image.Height;
+        mm.ThumbWidth = image.Width;
     }
 
     void GenerateThumbSq(Ffmpeg ffmpeg, string localSourceFile, string localThumbSqFile, MovieMetadata mm)
     {
         ffmpeg.ExtractFrame(localSourceFile, localThumbSqFile, GetThumbnailSeconds(mm));
 
-        using (var wand = new MagickWand(localThumbSqFile))
-        {
-            var width = (double)wand.ImageWidth;
-            var height = (double)wand.ImageHeight;
-            var aspect = width / height;
+        using var image = Image.Load(localThumbSqFile);
 
-            if (aspect >= THUMB_SQ_ASPECT)
+        image.Mutate(ctx => ctx
+            .Resize(new ResizeOptions()
             {
-                var newWidth = (width / height) * THUMB_SQ_HEIGHT;
+                Mode = ResizeMode.Crop,
+                Position = AnchorPositionMode.Center,
+                Size = new Size(THUMB_SQ_WIDTH, THUMB_SQ_HEIGHT),
+                Sampler = LanczosResampler.Lanczos3
+            })
+        );
 
-                // scale image to final height
-                wand.ScaleImage((uint)newWidth, THUMB_SQ_HEIGHT);
+        image.SaveAsJpeg(localThumbSqFile);
 
-                // crop sides as needed
-                wand.CropImage(THUMB_SQ_WIDTH, THUMB_SQ_HEIGHT, (int)(newWidth - THUMB_SQ_WIDTH) / 2, 0);
-            }
-            else
-            {
-                var newHeight = THUMB_SQ_WIDTH / (width / height);
-
-                // scale image to final width
-                wand.ScaleImage(THUMB_SQ_WIDTH, (uint)newHeight);
-
-                // crop top and bottom as needed
-                wand.CropImage(THUMB_SQ_WIDTH, THUMB_SQ_HEIGHT, 0, (int)(newHeight - THUMB_SQ_HEIGHT) / 2);
-            }
-
-            // sharpen after potentially resizing
-            // http://www.imagemagick.org/Usage/resize/#resize_unsharp
-            wand.UnsharpMaskImage(0, 0.7, 0.7, 0.008);
-
-            wand.WriteImage(localThumbSqFile, true);
-
-            mm.ThumbSqHeight = THUMB_SQ_HEIGHT;
-            mm.ThumbSqWidth = THUMB_SQ_WIDTH;
-        }
+        mm.ThumbSqHeight = image.Height;
+        mm.ThumbSqWidth = image.Width;
     }
 
     void PopulateVideoMetadata(string localSourceFile, MovieMetadata mm)
