@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using ConvertVideos.ResultWriter;
+using Microsoft.Extensions.Hosting;
 using NExifTool;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -12,6 +14,7 @@ using SixLabors.ImageSharp.Processing.Processors.Transforms;
 namespace ConvertVideos;
 
 public class Worker
+    : BackgroundService
 {
     const string FFMPEG_PATH = "/usr/bin/ffmpeg";
     const string FFPROBE_PATH = "/usr/bin/ffprobe";
@@ -30,6 +33,8 @@ public class Worker
     static readonly ExifTool _exifTool = new ExifTool(new ExifToolOptions());
 
     readonly Options _opts;
+    readonly IResultWriter _writer;
+    readonly IHostApplicationLifetime _appLifetime;
 
     string WebVideoDirectoryRoot => $"/movies/{_opts.Year}/{_opts.VideoDirectory.Name}/";
     string WebRawDirectory => $"{WebVideoDirectoryRoot}{DIR_RAW}/";
@@ -38,23 +43,15 @@ public class Worker
     string WebThumbnailDirectory => $"{WebVideoDirectoryRoot}{DIR_THUMBNAILS}/";
     string WebThumbSqDirectory => $"{WebVideoDirectoryRoot}{DIR_THUMB_SQ}/";
 
-    public Worker(Options opts)
+    public Worker(IHostApplicationLifetime appLifetime, Options opts, IResultWriter writer)
     {
+        _appLifetime = appLifetime ?? throw new ArgumentNullException(nameof(appLifetime));
         _opts = opts ?? throw new ArgumentNullException(nameof(opts));
+        _writer = writer ?? throw new ArgumentNullException(nameof(writer));
     }
 
-    public void Execute()
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!_opts.VideoDirectory.Exists)
-        {
-            throw new DirectoryNotFoundException($"The video directory specified, {_opts.VideoDirectory}, does not exist.  Please specify a directory containing images.");
-        }
-
-        if (_opts.OutputFile.Exists)
-        {
-            throw new IOException($"The specified output file, {_opts.OutputFile}, already exists.  Please remove it before running this process.");
-        }
-
         Ffmpeg.FfmpegPath = FFMPEG_PATH;
         Ffmpeg.FfprobePath = FFPROBE_PATH;
 
@@ -73,8 +70,11 @@ public class Worker
             results[index] = ProcessMovie(file);
         });
 
-        var writer = new PgSqlResultWriter();
-        writer.WriteOutput(_opts.OutputFile.FullName, _opts.CategoryInfo, results);
+        _writer.WriteOutput(_opts.OutputFile.FullName, _opts.CategoryInfo, results);
+
+        _appLifetime.StopApplication();
+
+        return Task.CompletedTask;
     }
 
     MovieMetadata ProcessMovie(string movie)
