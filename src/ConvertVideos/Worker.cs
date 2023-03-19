@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using ConvertVideos.ResultWriter;
 using NExifTool;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -28,11 +29,8 @@ public class Worker
     static readonly string[] SOURCE_EXTENSIONS = new string[] { ".flv", ".vob", ".mpg", ".mpeg", ".avi", ".3gp", ".m4v", ".mp4", ".mov" };
     static readonly ExifTool _exifTool = new ExifTool(new ExifToolOptions());
 
-    readonly object _lockObj = new object();
     readonly Options _opts;
 
-    bool HasSetTeaserVideo { get; set; }
-    StreamWriter Writer { get; set; }
     string WebVideoDirectoryRoot => $"/movies/{_opts.Year}/{_opts.VideoDirectory.Name}/";
     string WebRawDirectory => $"{WebVideoDirectoryRoot}{DIR_RAW}/";
     string WebFullsizeDirectory => $"{WebVideoDirectoryRoot}{DIR_FULL}/";
@@ -62,37 +60,24 @@ public class Worker
 
         PrepareOutputDirectories();
 
-        IList<string> filesToSize = GetMovieFileList();
+        var files = GetMovieFiles();
 
-        // try to leave a couple threads available for the GC
-        var vpus = Math.Max(Environment.ProcessorCount - 1, 1);
-        var opts = new ParallelOptions { MaxDegreeOfParallelism = vpus };
-
-        using (var fs = new FileStream(_opts.OutputFile.FullName, FileMode.CreateNew))
-        using (Writer = new StreamWriter(fs))
+        var opts = new ParallelOptions
         {
-            Writer.WriteLine($"INSERT INTO video.category (name, year) VALUES ({SqlString(_opts.CategoryName)}, {_opts.Year});");
+            MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount - 1, 1)
+        };
 
-            foreach (var role in _opts.AllowedRoles)
-            {
-                Writer.WriteLine(
-                    $"INSERT INTO video.category_role (category_id, role_id) VALUES (" +
-                    $"    (SELECT currval('video.category_id_seq')), " +
-                    $"    (SELECT id FROM maw.role WHERE name = {SqlString(role)})" +
-                    $" );"
-                );
-            }
+        var results = new MovieMetadata[files.Count];
 
-            Writer.WriteLine();
+        Parallel.ForEach(files, opts, (file, state, index) => {
+            results[index] = ProcessMovie(file);
+        });
 
-            Parallel.ForEach(filesToSize, opts, ProcessMovie);
-
-            Writer.WriteLine();
-            WriteCategoryUpdateTotals();
-        }
+        var writer = new PgSqlResultWriter();
+        writer.WriteOutput(_opts.OutputFile.FullName, _opts.CategoryInfo, results);
     }
 
-    void ProcessMovie(string movie)
+    MovieMetadata ProcessMovie(string movie)
     {
         Console.WriteLine($"Processing: {Path.GetFileName(movie)}");
 
@@ -148,85 +133,7 @@ public class Worker
 
         PopulateVideoMetadata(localRawFile, mm);
 
-        lock (_lockObj)
-        {
-            Writer.WriteLine(
-                "INSERT INTO video.video (category_id, " +
-                    $"thumb_height, thumb_width, thumb_path, thumb_size, " +
-                    $"thumb_sq_height, thumb_sq_width, thumb_sq_path, thumb_sq_size, " +
-                    $"full_height, full_width, full_path, full_size, " +
-                    $"scaled_height, scaled_width, scaled_path, scaled_size, " +
-                    $"raw_height, raw_width, raw_path, raw_size, " +
-                    $"duration, create_date, " +
-                    $"gps_latitude, gps_latitude_ref_id, gps_longitude, gps_longitude_ref_id) VALUES (" +
-                    $"(SELECT currval('video.category_id_seq')), " +
-                    $"{mm.ThumbHeight}, " +
-                    $"{mm.ThumbWidth}, " +
-                    $"{SqlString(mm.ThumbUrl)}, " +
-                    $"{mm.ThumbSize}, " +
-                    $"{mm.ThumbSqHeight}, " +
-                    $"{mm.ThumbSqWidth}, " +
-                    $"{SqlString(mm.ThumbSqUrl)}, " +
-                    $"{mm.ThumbSqSize}, " +
-                    $"{mm.FullHeight}, " +
-                    $"{mm.FullWidth}, " +
-                    $"{SqlString(mm.FullUrl)}, " +
-                    $"{mm.FullSize}, " +
-                    $"{mm.ScaledHeight}, " +
-                    $"{mm.ScaledWidth}, " +
-                    $"{SqlString(mm.ScaledUrl)}, " +
-                    $"{mm.ScaledSize}, " +
-                    $"{mm.RawHeight}, " +
-                    $"{mm.RawWidth}, " +
-                    $"{SqlString(mm.RawUrl)}, " +
-                    $"{mm.RawSize}, " +
-                    $"{SqlNumber(mm.VideoDuration)}, " +
-                    $"{SqlTimestamp(mm.VideoCreationTime)}, " +
-                    $"{SqlNumber(mm.Latitude)}, " +
-                    $"{SqlString(mm.LatitudeRef)}, " +
-                    $"{SqlNumber(mm.Longitude)}, " +
-                    $"{SqlString(mm.LongitudeRef)} " +
-                    $");");
-
-            if (!HasSetTeaserVideo)
-            {
-                Writer.WriteLine();
-                Writer.WriteLine(
-                    $"UPDATE video.category " +
-                    $"   SET teaser_image_path = {SqlString(mm.ThumbUrl)}, " +
-                    $"       teaser_image_height = {mm.ThumbHeight}, " +
-                    $"       teaser_image_width = {mm.ThumbWidth}, " +
-                    $"       teaser_image_size = {mm.ThumbSize}, " +
-                    $"       teaser_image_sq_path = {SqlString(mm.ThumbSqUrl)}, " +
-                    $"       teaser_image_sq_height = {mm.ThumbSqHeight}, " +
-                    $"       teaser_image_sq_width = {mm.ThumbSqWidth}, " +
-                    $"       teaser_image_sq_size = {mm.ThumbSqSize} " +
-                    $" WHERE id = (SELECT currval('video.category_id_seq'));");
-                Writer.WriteLine();
-
-                HasSetTeaserVideo = true;
-            }
-        }
-    }
-
-    void WriteCategoryUpdateTotals()
-    {
-        Writer.WriteLine(
-            "UPDATE video.category c " +
-            "   SET video_count = (SELECT COUNT(1) FROM video.video WHERE category_id = c.id), " +
-            "       create_date = (SELECT create_date FROM video.video WHERE id = (SELECT MIN(id) FROM video.video where category_id = c.id AND create_date IS NOT NULL)), " +
-            "       gps_latitude = (SELECT gps_latitude FROM video.video WHERE id = (SELECT MIN(id) FROM video.video WHERE category_id = c.id AND gps_latitude IS NOT NULL)), " +
-            "       gps_latitude_ref_id = (SELECT gps_latitude_ref_id FROM video.video WHERE id = (SELECT MIN(id) FROM video.video WHERE category_id = c.id AND gps_latitude IS NOT NULL)), " +
-            "       gps_longitude = (SELECT gps_longitude FROM video.video WHERE id = (SELECT MIN(id) FROM video.video WHERE category_id = c.id AND gps_latitude IS NOT NULL)), " +
-            "       gps_longitude_ref_id = (SELECT gps_longitude_ref_id FROM video.video WHERE id = (SELECT MIN(id) FROM video.video WHERE category_id = c.id AND gps_latitude IS NOT NULL)), " +
-            "       total_duration = (SELECT SUM(duration) FROM video.video WHERE category_id = c.id), " +
-            "       total_size_thumb = (SELECT SUM(thumb_size) FROM video.video WHERE category_id = c.id), " +
-            "       total_size_thumb_sq = (SELECT SUM(thumb_sq_size) FROM video.video WHERE category_id = c.id), " +
-            "       total_size_scaled = (SELECT SUM(scaled_size) FROM video.video WHERE category_id = c.id), " +
-            "       total_size_full = (SELECT SUM(full_size) FROM video.video WHERE category_id = c.id), " +
-            "       total_size_raw = (SELECT SUM(raw_size) FROM video.video WHERE category_id = c.id) " +
-            " WHERE id = (SELECT currval('video.category_id_seq'));"
-        );
+        return mm;
     }
 
     int GetThumbnailSeconds(MovieMetadata mm)
@@ -316,46 +223,13 @@ public class Worker
         return fi.Length;
     }
 
-    IList<string> GetMovieFileList()
+    IList<string> GetMovieFiles()
     {
-        var list = new List<string>();
-
-        var files = _opts.VideoDirectory.GetFiles();
-
-        list.AddRange(files.Where(f => SOURCE_EXTENSIONS.Contains(f.Extension.ToLower())).Select(f => f.FullName));
-
-        return list;
-    }
-
-    static string SqlNumber(object num)
-    {
-        if (num == null)
-        {
-            return "NULL";
-        }
-
-        return num.ToString();
-    }
-
-    static string SqlString(string val)
-    {
-        if (val == null)
-        {
-            return "NULL";
-        }
-        else
-        {
-            return $"'{val.Replace("'", "''")}'";
-        }
-    }
-
-    string SqlTimestamp(DateTime? dt)
-    {
-        if (dt == null)
-        {
-            return "NULL";
-        }
-
-        return SqlString(((DateTime)dt).ToString("yyyy-MM-dd HH:mm:sszzz"));
+        return _opts
+            .VideoDirectory
+            .EnumerateFiles()
+            .Where(f => SOURCE_EXTENSIONS.Contains(f.Extension.ToLower()))
+            .Select(f => f.FullName)
+            .ToList();
     }
 }

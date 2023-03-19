@@ -8,12 +8,32 @@ namespace ConvertVideos;
 
 public class Options
 {
+    CategoryInfo _category;
+
     public string CategoryName { get; private set; }
     public FileInfo OutputFile { get; private set; }
     public DirectoryInfo VideoDirectory { get; private set; }
     public string WebDirectory { get; private set; }
     public string[] AllowedRoles { get; private set; }
-    public int Year { get; private set; }
+    public ushort Year { get; private set; }
+
+    public CategoryInfo CategoryInfo
+    {
+        get
+        {
+            if (_category == null)
+            {
+                _category = new CategoryInfo
+                {
+                    Name = CategoryName,
+                    Year = Year,
+                    AllowedRoles = AllowedRoles
+                };
+            }
+
+            return _category;
+        }
+    }
 
     public void Parse(string[] args)
     {
@@ -82,7 +102,7 @@ public class Options
         var videoDirectoryOption = new Option<DirectoryInfo>(new[] { "-v", "--video-directory" }, "The directory containing the source videos to resize: (/home/mmorano/Desktop/mypix/).");
         var webDirectoryOption = new Option<string>(new[] { "-w", "--web-directory" }, "The full URL path to the image directory: (/images/2009/mypix/).");
         var allowedRolesOption = new Option<string[]>(new[] { "-r", "--allowed-roles" }, "Roles that will have access to this category");
-        var yearOption = new Option<int>(new[] { "-y", "--year" }, "The year the pictures were taken.");
+        var yearOption = new Option<ushort>(new[] { "-y", "--year" }, "The year the pictures were taken.");
 
         var rootCommand = new RootCommand("A utility to scale videos to be shown on mikeandwan.us")
             {
@@ -100,7 +120,7 @@ public class Options
             DirectoryInfo videoDirectory,
             string webDirectory,
             string[] allowedRoles,
-            int year) =>
+            ushort year) =>
         {
             CategoryName = categoryName;
             OutputFile = outputFile;
