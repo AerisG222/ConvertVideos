@@ -135,17 +135,11 @@ public abstract class Ffmpeg
         {
             switch (key)
             {
-                case "codec_name":
-                    mm.VideoCodecName = vDic[key];
-                    break;
                 case "width":
                     mm.RawWidth = int.Parse(vDic[key]);
                     break;
                 case "height":
                     mm.RawHeight = int.Parse(vDic[key]);
-                    break;
-                case "r_frame_rate":
-                    mm.VideoFrameRate = vDic[key];
                     break;
                 case "duration":
                     float f;
@@ -153,15 +147,6 @@ public abstract class Ffmpeg
                     if (float.TryParse(vDic[key], out f))
                     {
                         mm.VideoDuration = f;
-                    }
-
-                    break;
-                case "nb_frames":
-                    int i;
-
-                    if (int.TryParse(vDic[key], out i))
-                    {
-                        mm.VideoNumberOfFrames = i;
                     }
 
                     break;
@@ -195,25 +180,6 @@ public abstract class Ffmpeg
 
                 mm.RawWidth = mm.RawHeight;
                 mm.RawHeight = tmp;
-            }
-        }
-
-        if (aDic != null)
-        {
-            foreach (string key in aDic.Keys)
-            {
-                switch (key)
-                {
-                    case "codec_name":
-                        mm.AudioCodecName = aDic[key];
-                        break;
-                    case "channels":
-                        mm.AudioChannelCount = int.Parse(aDic[key]);
-                        break;
-                    case "sample_rate":
-                        mm.AudioSampleRate = float.Parse(aDic[key]);
-                        break;
-                }
             }
         }
 

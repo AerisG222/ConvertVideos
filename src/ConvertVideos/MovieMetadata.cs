@@ -4,14 +4,8 @@ namespace ConvertVideos;
 
 public class MovieMetadata
 {
-    public string VideoCodecName { get; set; }
-    public string VideoFrameRate { get; set; }
     public float VideoDuration { get; set; }
-    public int VideoNumberOfFrames { get; set; }
     public DateTime? VideoCreationTime { get; set; }
-    public string AudioCodecName { get; set; }
-    public double AudioSampleRate { get; set; }
-    public int AudioChannelCount { get; set; }
     public int Rotation { get; set; }
     public double? Latitude { get; set; }
     public string LatitudeRef { get; set; }
