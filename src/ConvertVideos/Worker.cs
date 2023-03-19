@@ -25,68 +25,24 @@ public class Worker
     const int THUMB_HEIGHT = 160;
     const int THUMB_SQ_WIDTH = 160;
     const int THUMB_SQ_HEIGHT = 120;
-    const float THUMB_SQ_ASPECT = THUMB_SQ_WIDTH / THUMB_SQ_HEIGHT;
-    const string DEST_EXTENSION = "mp4";
     static readonly string[] SOURCE_EXTENSIONS = new string[] { ".flv", ".vob", ".mpg", ".mpeg", ".avi", ".3gp", ".m4v", ".mp4", ".mov" };
     static readonly ExifTool _exifTool = new ExifTool(new ExifToolOptions());
 
-    object _lockObj = new object();
+    readonly object _lockObj = new object();
+    readonly Options _opts;
 
-    Options _opts;
     bool HasSetTeaserVideo { get; set; }
     StreamWriter Writer { get; set; }
+    string WebVideoDirectoryRoot => $"/movies/{_opts.Year}/{_opts.VideoDirectory.Name}/";
+    string WebRawDirectory => $"{WebVideoDirectoryRoot}{DIR_RAW}/";
+    string WebFullsizeDirectory => $"{WebVideoDirectoryRoot}{DIR_FULL}/";
+    string WebScaledDirectory => $"{WebVideoDirectoryRoot}{DIR_SCALED}/";
+    string WebThumbnailDirectory => $"{WebVideoDirectoryRoot}{DIR_THUMBNAILS}/";
+    string WebThumbSqDirectory => $"{WebVideoDirectoryRoot}{DIR_THUMB_SQ}/";
 
     public Worker(Options opts)
     {
         _opts = opts ?? throw new ArgumentNullException(nameof(opts));
-    }
-
-    string WebVideoDirectoryRoot
-    {
-        get
-        {
-            return $"/movies/{_opts.Year}/{_opts.VideoDirectory.Name}/";
-        }
-    }
-
-    string WebRawDirectory
-    {
-        get
-        {
-            return $"{WebVideoDirectoryRoot}{DIR_RAW}/";
-        }
-    }
-
-    string WebFullsizeDirectory
-    {
-        get
-        {
-            return $"{WebVideoDirectoryRoot}{DIR_FULL}/";
-        }
-    }
-
-    string WebScaledDirectory
-    {
-        get
-        {
-            return $"{WebVideoDirectoryRoot}{DIR_SCALED}/";
-        }
-    }
-
-    string WebThumbnailDirectory
-    {
-        get
-        {
-            return $"{WebVideoDirectoryRoot}{DIR_THUMBNAILS}/";
-        }
-    }
-
-    string WebThumbSqDirectory
-    {
-        get
-        {
-            return $"{WebVideoDirectoryRoot}{DIR_THUMB_SQ}/";
-        }
     }
 
     public void Execute()

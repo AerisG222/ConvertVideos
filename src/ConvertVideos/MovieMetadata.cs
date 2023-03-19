@@ -18,7 +18,6 @@ public class MovieMetadata
     public double? Longitude { get; set; }
     public string LongitudeRef { get; set; }
 
-
     public int RawHeight { get; set; }
     public int RawWidth { get; set; }
     public long RawSize { get; set; }
