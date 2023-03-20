@@ -21,7 +21,6 @@ RUN dnf install -y \
 RUN dnf install -y \
     dotnet-runtime-7.0 \
     perl-Image-ExifTool \
-    ImageMagick-devel \
     ffmpeg \
   	&& dnf clean all \
   	&& rm -rf /var/cache/yum
