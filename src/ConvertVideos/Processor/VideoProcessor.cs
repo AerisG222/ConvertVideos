@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using NExifTool;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -26,6 +27,7 @@ public class VideoProcessor
     const int THUMB_SQ_HEIGHT = 120;
 
     readonly ExifTool _exifTool;
+    readonly ILogger<VideoProcessor> _log;
     readonly Options _opts;
 
     string WebVideoDirectoryRoot => $"/movies/{_opts.Year}/{_opts.VideoDirectory.Name}/";
@@ -35,8 +37,12 @@ public class VideoProcessor
     string WebThumbnailDirectory => $"{WebVideoDirectoryRoot}{DIR_THUMBNAILS}/";
     string WebThumbSqDirectory => $"{WebVideoDirectoryRoot}{DIR_THUMB_SQ}/";
 
-    public VideoProcessor(Options opts, ExifTool exifTool)
-    {
+    public VideoProcessor(
+        ILogger<VideoProcessor> log,
+        Options opts,
+        ExifTool exifTool
+    ) {
+        _log = log ?? throw new ArgumentNullException(nameof(log));
         _opts = opts ?? throw new ArgumentNullException(nameof(opts));
         _exifTool = exifTool ?? throw new ArgumentNullException(nameof(exifTool));
 
@@ -45,7 +51,7 @@ public class VideoProcessor
 
     public async Task<MovieMetadata> ProcessVideoAsync(string movie)
     {
-        Console.WriteLine($"Processing: {Path.GetFileName(movie)}");
+        _log.LogInformation("Processing: {Video}", Path.GetFileName(movie));
 
         var mm = await GetMovieMetadataAsync(movie);
 
