@@ -1,6 +1,6 @@
 using System;
 
-namespace ConvertVideos;
+namespace ConvertVideos.Processor;
 
 public class ScaledDimensions
 {

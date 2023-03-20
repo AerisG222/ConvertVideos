@@ -1,18 +1,18 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using NExifTool;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Processing.Processors.Transforms;
+using Xabe.FFmpeg;
 
 namespace ConvertVideos.Processor;
 
 public class VideoProcessor
     : IVideoProcessor
 {
-    const string FFMPEG_PATH = "/usr/bin/ffmpeg";
-    const string FFPROBE_PATH = "/usr/bin/ffprobe";
     const string DIR_RAW = "raw";
     const string DIR_FULL = "full";
     const string DIR_SCALED = "scaled";
@@ -40,26 +40,22 @@ public class VideoProcessor
         _opts = opts ?? throw new ArgumentNullException(nameof(opts));
         _exifTool = exifTool ?? throw new ArgumentNullException(nameof(exifTool));
 
-        Ffmpeg.FfmpegPath = FFMPEG_PATH;
-        Ffmpeg.FfprobePath = FFPROBE_PATH;
-
         PrepareOutputDirectories();
     }
 
-    public Task<MovieMetadata> ProcessVideoAsync(string movie)
+    public async Task<MovieMetadata> ProcessVideoAsync(string movie)
     {
         Console.WriteLine($"Processing: {Path.GetFileName(movie)}");
 
-        Ffmpeg ffmpeg = new FfmpegH264();
+        var mm = await GetMovieMetadataAsync(movie);
 
-        MovieMetadata mm = ffmpeg.GatherMetadata(movie);
         var fullDimension = new ScaledDimensions(FULL_MIN_DIMENSION, mm.RawHeight, mm.RawWidth);
         var scaledDimension = new ScaledDimensions(SCALE_MIN_DIMENSION, mm.RawHeight, mm.RawWidth);
 
         var dir = Path.GetDirectoryName(movie);
         var file = Path.GetFileName(movie);
-        var fileOut = $"{Path.GetFileNameWithoutExtension(movie)}{ffmpeg.OutputFileExtension}";
-        var fileThumb = $"{Path.GetFileNameWithoutExtension(movie)}.jpg";
+        var fileOut = Path.ChangeExtension(file, ".mp4");
+        var fileThumb = Path.ChangeExtension(file, ".jpg");
 
         var localRawFile = Path.Combine(dir, DIR_RAW, file);
         var localFullFile = Path.Combine(dir, DIR_FULL, fileOut);
@@ -70,98 +66,124 @@ public class VideoProcessor
         // move the raw file
         mm.RawUrl = Path.Combine(WebRawDirectory, file);
         File.Move(movie, localRawFile);
-        mm.RawSize = GetFileSize(localRawFile);
 
         // convert for full size
         mm.FullHeight = fullDimension.ScaledHeight;
         mm.FullWidth = fullDimension.ScaledWidth;
         mm.FullUrl = Path.Combine(WebFullsizeDirectory, fileOut);
-        ffmpeg.Convert(localRawFile, localFullFile, mm.FullWidth, mm.FullHeight);
+        await ConvertVideoAsync(localRawFile, localFullFile, mm.FullWidth, mm.FullHeight);
         mm.FullSize = GetFileSize(localFullFile);
-
-        // some sources seem to report bad durations - but the webm conversions seem clean, so use those to get the duration!
-        MovieMetadata m2 = ffmpeg.GatherMetadata(localFullFile);
-        mm.VideoDuration = m2.VideoDuration;
 
         // convert to scaled size
         mm.ScaledHeight = scaledDimension.ScaledHeight;
         mm.ScaledWidth = scaledDimension.ScaledWidth;
         mm.ScaledUrl = Path.Combine(WebScaledDirectory, fileOut);
-        ffmpeg.Convert(localRawFile, localScaledFile, mm.ScaledWidth, mm.ScaledHeight);
+        await ConvertVideoAsync(localRawFile, localScaledFile, mm.ScaledWidth, mm.ScaledHeight);
         mm.ScaledSize = GetFileSize(localScaledFile);
 
         // generate thumbnail
         mm.ThumbUrl = Path.Combine(WebThumbnailDirectory, fileThumb);
-        GenerateThumbnail(ffmpeg, localRawFile, localThumbnailFile, mm);
+        (var height, var width) = await GenerateThumbnailAsync(localRawFile, localThumbnailFile);
+        mm.ThumbHeight = height;
+        mm.ThumbWidth = width;
         mm.ThumbSize = GetFileSize(localThumbnailFile);
 
         // generate thumb_sq
         mm.ThumbSqUrl = Path.Combine(WebThumbSqDirectory, fileThumb);
-        GenerateThumbSq(ffmpeg, localRawFile, localThumbSqFile, mm);
+        (height, width) = await GenerateThumbSqAsync(localRawFile, localThumbSqFile);
+        mm.ThumbSqHeight = height;
+        mm.ThumbSqWidth = width;
         mm.ThumbSqSize = GetFileSize(localThumbSqFile);
 
-        PopulateVideoMetadata(localRawFile, mm);
-
-        return Task.FromResult(mm);
+        return mm;
     }
 
-    int GetThumbnailSeconds(MovieMetadata mm)
+    async Task ConvertVideoAsync(string srcFile, string dstFile, int dstWidth, int dstHeight)
     {
-        var frameAtSecond = 2;
+        var mi = await FFmpeg.GetMediaInfo(srcFile);
 
-        if (mm.VideoDuration < 2)
+        IStream videoStream = mi.VideoStreams.FirstOrDefault()
+            ?.SetCodec(VideoCodec.h264)
+            ?.SetSize(dstWidth, dstHeight);
+
+        IStream audioStream = mi.AudioStreams.FirstOrDefault()
+            ?.SetCodec(AudioCodec.aac);
+
+        await FFmpeg.Conversions
+            .New()
+            .AddStream(videoStream, audioStream)
+            .SetOutput(dstFile)
+            .Start();
+    }
+
+    async Task<MovieMetadata> GetMovieMetadataAsync(string file)
+    {
+        var mediaInfo = await FFmpeg.GetMediaInfo(file);
+        var video = mediaInfo.VideoStreams.First();
+
+        var mm = new MovieMetadata()
         {
-            frameAtSecond = 0;
-        }
+            RawHeight = video.Height,
+            RawWidth = video.Width,
+            RawSize = mediaInfo.Size,
+            Rotation = video.Rotation ?? 0,
+            VideoCreationTime = mediaInfo.CreationTime,
+            VideoDuration = Convert.ToSingle(video.Duration.TotalSeconds),
+        };
 
-        return frameAtSecond;
+        PopulateExifData(file, mm);
+
+        return mm;
     }
 
-    void GenerateThumbnail(Ffmpeg ffmpeg, string localSourceFile, string localThumbnailFile, MovieMetadata mm)
+    Task<(int height, int width)> GenerateThumbnailAsync(string srcFile, string dstFile)
     {
-        ffmpeg.ExtractFrame(localSourceFile, localThumbnailFile, GetThumbnailSeconds(mm));
+        var opts = new ResizeOptions()
+        {
+            Mode = ResizeMode.Max,
+            Position = AnchorPositionMode.Center,
+            Size = new Size(THUMB_WIDTH, THUMB_HEIGHT),
+            Sampler = LanczosResampler.Lanczos3
+        };
 
-        using var image = Image.Load(localThumbnailFile);
-
-        image.Mutate(ctx => ctx
-            .Resize(new ResizeOptions()
-            {
-                Mode = ResizeMode.Max,
-                Position = AnchorPositionMode.Center,
-                Size = new Size(THUMB_WIDTH, THUMB_HEIGHT),
-                Sampler = LanczosResampler.Lanczos3
-            })
-        );
-
-        image.SaveAsJpeg(localThumbnailFile);
-
-        mm.ThumbHeight = image.Height;
-        mm.ThumbWidth = image.Width;
+        return GenerateThumbnailAsync(srcFile, dstFile, opts);
     }
 
-    void GenerateThumbSq(Ffmpeg ffmpeg, string localSourceFile, string localThumbSqFile, MovieMetadata mm)
+    Task<(int height, int width)> GenerateThumbSqAsync(string srcFile, string dstFile)
     {
-        ffmpeg.ExtractFrame(localSourceFile, localThumbSqFile, GetThumbnailSeconds(mm));
+        var opts = new ResizeOptions()
+        {
+            Mode = ResizeMode.Crop,
+            Position = AnchorPositionMode.Center,
+            Size = new Size(THUMB_SQ_WIDTH, THUMB_SQ_HEIGHT),
+            Sampler = LanczosResampler.Lanczos3
+        };
 
-        using var image = Image.Load(localThumbSqFile);
-
-        image.Mutate(ctx => ctx
-            .Resize(new ResizeOptions()
-            {
-                Mode = ResizeMode.Crop,
-                Position = AnchorPositionMode.Center,
-                Size = new Size(THUMB_SQ_WIDTH, THUMB_SQ_HEIGHT),
-                Sampler = LanczosResampler.Lanczos3
-            })
-        );
-
-        image.SaveAsJpeg(localThumbSqFile);
-
-        mm.ThumbSqHeight = image.Height;
-        mm.ThumbSqWidth = image.Width;
+        return GenerateThumbnailAsync(srcFile, dstFile, opts);
     }
 
-    void PopulateVideoMetadata(string localSourceFile, MovieMetadata mm)
+    async Task<(int height, int width)> GenerateThumbnailAsync(string srcFile, string dstFile, ResizeOptions resizeOptions)
+    {
+        var mi = await FFmpeg.GetMediaInfo(srcFile);
+        var video = mi.VideoStreams.First();
+
+        var frameToExtract = video.Duration > TimeSpan.FromSeconds(2) ? 2 * video.Framerate : 0;
+
+        await FFmpeg.Conversions
+            .New()
+            .AddStream(video)
+            .ExtractNthFrame(Convert.ToInt32(frameToExtract), s => dstFile)
+            .Start();
+
+        using var image = Image.Load(dstFile);
+
+        image.Mutate(ctx => ctx.Resize(resizeOptions));
+        image.SaveAsJpeg(dstFile);
+
+        return (image.Height, image.Width);
+    }
+
+    void PopulateExifData(string localSourceFile, MovieMetadata mm)
     {
         var tags = _exifTool.GetTagsAsync(localSourceFile).Result;
 
