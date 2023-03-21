@@ -202,6 +202,27 @@ public class VideoProcessor
         mm.LatitudeRef = tags.SingleOrDefaultPrimaryTag("GPSLatitudeRef")?.Value?.Substring(0, 1);
         mm.Longitude = tags.SingleOrDefaultPrimaryTag("GPSLongitude")?.TryGetDouble();
         mm.LongitudeRef = tags.SingleOrDefaultPrimaryTag("GPSLongitudeRef")?.Value?.Substring(0, 1);
+
+        var exifRotation = tags.SingleOrDefaultPrimaryTag("Rotation")?.TryGetInt32() ?? 0;
+
+        FixupRotationHack(mm, exifRotation);
+    }
+
+    // there seems to be an issue when dealing with rotation from some devices - ffprobe does not
+    // report the rotation, but exif tools can see it.  in this scenario, the width needs to be
+    // swapped with the height so all the resizing and downstream changes are properly applied.
+    void FixupRotationHack(MovieMetadata mm, int exifRotation)
+    {
+        if (mm.Rotation == 0 && exifRotation != 0)
+        {
+            if (Math.Abs(exifRotation) == 90 || Math.Abs(exifRotation) == 270)
+            {
+                var tmp = mm.RawWidth;
+
+                mm.RawWidth = mm.RawHeight;
+                mm.RawHeight = tmp;
+            }
+        }
     }
 
     void PrepareOutputDirectories()
