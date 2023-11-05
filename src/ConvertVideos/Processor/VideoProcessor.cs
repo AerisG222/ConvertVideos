@@ -109,15 +109,17 @@ public class VideoProcessor
         var mi = await FFmpeg.GetMediaInfo(srcFile);
 
         IStream videoStream = mi.VideoStreams.FirstOrDefault()
-            ?.SetCodec(VideoCodec.h264)
+            ?.SetCodec(VideoCodec.av1)
             ?.SetSize(dstWidth, dstHeight);
 
         IStream audioStream = mi.AudioStreams.FirstOrDefault()
             ?.SetCodec(AudioCodec.aac);
 
+        // https://gist.github.com/BlueSwordM/86dfcb6ab38a93a524472a0cbe4c4100
         await FFmpeg.Conversions
             .New()
             .AddStream(videoStream, audioStream)
+            .AddParameter("-c:v libsvtav1 -preset 6 -crf 42 -pix_fmt yuv420p10le")
             .SetOutput(dstFile)
             .Start();
     }
