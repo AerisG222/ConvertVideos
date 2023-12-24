@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 WORKDIR /src
 
@@ -6,11 +6,11 @@ COPY ConvertVideos.sln .
 COPY src/. ./src/
 
 RUN dotnet restore
-RUN dotnet publish -o /app -c Release -r linux-x64 --no-self-contained
+RUN dotnet publish src/ConvertVideos/ConvertVideos.csproj -o /app -c Release -r linux-x64 --no-self-contained
 
 
 # build runtime image
-FROM fedora:37
+FROM fedora:39
 
 RUN dnf install -y \
     https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
@@ -19,7 +19,7 @@ RUN dnf install -y \
   	&& rm -rf /var/cache/yum
 
 RUN dnf install -y \
-    dotnet-runtime-7.0 \
+    dotnet-runtime-8.0 \
     perl-Image-ExifTool \
     ffmpeg \
   	&& dnf clean all \
