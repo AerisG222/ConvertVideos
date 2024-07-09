@@ -10,20 +10,20 @@ RUN dotnet publish src/ConvertVideos/ConvertVideos.csproj -o /app -c Release -r 
 
 
 # build runtime image
-FROM fedora:39
+FROM fedora:40
 
 RUN dnf install -y \
     https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
     https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
-  	&& dnf clean all \
-  	&& rm -rf /var/cache/yum
+        && dnf clean all \
+        && rm -rf /var/cache/yum
 
 RUN dnf install -y \
     dotnet-runtime-8.0 \
     perl-Image-ExifTool \
     ffmpeg \
-  	&& dnf clean all \
-  	&& rm -rf /var/cache/yum
+        && dnf clean all \
+        && rm -rf /var/cache/yum
 
 WORKDIR /convert-videos
 
